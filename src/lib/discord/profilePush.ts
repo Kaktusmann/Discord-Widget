@@ -24,7 +24,18 @@ export function computePayloadHash(payload: ProfilePushPayload): string {
   return createHash("sha256").update(JSON.stringify(stable)).digest("hex");
 }
 
-/** Pushes the full dynamic-field payload to a user's Discord profile. Replaces the entire array — always send the complete current field set, not a delta. */
+/**
+ * Pushes the full dynamic-field payload to a user's Discord profile. Replaces
+ * the entire array — always send the complete current field set, not a delta.
+ *
+ * The `identities/{id}` path segment is a `provider_issued_user_id` — this
+ * application's own internal ID for the person, as in a real game/account
+ * integration (confirmed by Discord's 50035
+ * APPLICATION_IDENTITY_PROVIDER_USER_ID_MISMATCH error when we hardcoded the
+ * literal "0" for every user). Since this app has no separate internal
+ * user-ID system, the Discord user's own ID doubles as that provider-issued
+ * ID — same value as {discordUserId} above it.
+ */
 export async function pushProfileData(
   discordUserId: string,
   payload: ProfilePushPayload,
@@ -33,7 +44,7 @@ export async function pushProfileData(
     discordRequest({
       method: "PATCH",
       version: "v9",
-      path: `/applications/${discordConfig.applicationId}/users/${discordUserId}/identities/0/profile`,
+      path: `/applications/${discordConfig.applicationId}/users/${discordUserId}/identities/${discordUserId}/profile`,
       token: `Bot ${discordConfig.botToken}`,
       body: payload,
     }),
