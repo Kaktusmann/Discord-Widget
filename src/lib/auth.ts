@@ -23,6 +23,22 @@ export const authOptions: NextAuthOptions = {
       authorization: {
         params: { scope: env.DISCORD_OAUTH_SCOPE },
       },
+      // The sdk.social_layer scope makes Discord's token response include an
+      // id_token even without the openid scope. next-auth's OAuth client
+      // refuses to process that response unless idToken is set. We still want
+      // the well-documented REST profile shape (id/username/discriminator/
+      // avatar) rather than whatever undocumented claims the id_token carries
+      // for this scope, so userinfo.request is overridden to fetch it directly.
+      idToken: true,
+      userinfo: {
+        url: "https://discord.com/api/users/@me",
+        async request({ tokens }) {
+          const res = await fetch("https://discord.com/api/users/@me", {
+            headers: { Authorization: `Bearer ${tokens.access_token}` },
+          });
+          return res.json();
+        },
+      },
     }),
   ],
   callbacks: {
