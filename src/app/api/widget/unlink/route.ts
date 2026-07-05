@@ -2,8 +2,6 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getFreshAccessToken } from "@/lib/discord/tokenRefresh";
-import { detachWidgetFromProfile } from "@/lib/discord/oauth";
 
 export async function POST() {
   const session = await getServerSession(authOptions);
@@ -14,9 +12,10 @@ export async function POST() {
   const userId = session.user.id;
 
   try {
-    const accessToken = await getFreshAccessToken(userId);
-    await detachWidgetFromProfile(accessToken);
-
+    // No Discord-side call here — see src/lib/discord/oauth.ts. Unlinking just
+    // stops us from pushing further profile data for this user; revoking the
+    // OAuth authorization itself is done through Discord's own "Authorized
+    // Apps" settings, outside this app's control.
     const link = await prisma.widgetLink.update({
       where: { userId },
       data: { published: false, unlinkedAt: new Date(), lastError: null },

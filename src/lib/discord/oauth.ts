@@ -43,13 +43,23 @@ export async function authorizeWidgetForUser(userAccessToken: string): Promise<v
   );
 }
 
+/**
+ * NOT currently called by the link/unlink flow. Confirmed via GET
+ * /oauth2/@me that the access token correctly carries the sdk.social_layer
+ * scope, yet this call still 401s — so the scope grant isn't the problem,
+ * this endpoint/shape itself is. Once a user has authorized sdk.social_layer,
+ * pushing data via profilePush.ts's PATCH .../identities/0/profile may be
+ * sufficient on its own with no separate "attach" step. Kept here, unused,
+ * in case a real verification (e.g. capturing the actual request via
+ * devtools during the manual browser-based flow) shows otherwise.
+ */
 export async function attachWidgetToProfile(
   userAccessToken: string,
   widgetConfigId: string,
 ): Promise<void> {
   // UNVERIFIED: this PUT may REPLACE the user's entire widget list rather than
-  // appending to it. If the spike confirms that, this must become a
-  // GET-current-widgets -> merge -> PUT instead of this naive single-element PUT.
+  // appending to it. If it turns out to be needed after all, this must become
+  // a GET-current-widgets -> merge -> PUT instead of this naive single-element PUT.
   await discordQueue.enqueue(() =>
     discordRequest({
       method: "PUT",
@@ -64,9 +74,8 @@ export async function attachWidgetToProfile(
   );
 }
 
+/** NOT currently called — see attachWidgetToProfile. Same 401, same caveats. */
 export async function detachWidgetFromProfile(userAccessToken: string): Promise<void> {
-  // Same caveat as attachWidgetToProfile: assumes PUT with an empty list removes
-  // only this application's widget rather than clobbering others.
   await discordQueue.enqueue(() =>
     discordRequest({
       method: "PUT",

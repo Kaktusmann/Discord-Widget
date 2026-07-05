@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getFreshAccessToken } from "@/lib/discord/tokenRefresh";
-import { attachWidgetToProfile } from "@/lib/discord/oauth";
 import { discordConfig } from "@/lib/discord/config";
 
 export async function POST() {
@@ -15,8 +14,11 @@ export async function POST() {
   const userId = session.user.id;
 
   try {
-    const accessToken = await getFreshAccessToken(userId);
-    await attachWidgetToProfile(accessToken, discordConfig.widgetConfigId);
+    // Confirms the stored OAuth token is still valid/refreshable; no separate
+    // Discord-side "attach" call is made — see src/lib/discord/oauth.ts for
+    // why. "Linked" here just means "the user has authorized sdk.social_layer
+    // and we're allowed to start pushing profile data for them."
+    await getFreshAccessToken(userId);
 
     const link = await prisma.widgetLink.upsert({
       where: { userId },
