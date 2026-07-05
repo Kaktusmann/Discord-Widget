@@ -25,6 +25,7 @@ export const config = {
     "/api/widget/unlink",
     "/api/widget/push-test",
     "/api/widget/apikey",
+    "/api/widget/debug-scopes",
     "/api/sources/:path*",
   ],
 };
