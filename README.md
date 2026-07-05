@@ -61,8 +61,35 @@ docker compose up -d
 To redeploy after a new push: `docker compose pull && docker compose up -d`.
 
 The SQLite file lives in the `widget-data` named volume, so it survives
-redeploys. `build: .` is also still set in `docker-compose.yml`, so local
-development/testing can use `docker compose up -d --build` instead of pulling.
+redeploys.
+
+`docker-compose.yml` intentionally has **no `build:` key** — production hosts
+(including Portainer stacks) should always pull the published image, never
+build on the server. `docker-compose.override.yml` adds `build: .` back in,
+and Compose auto-merges it when both files sit in the same directory, so
+local `docker compose up --build` still builds from source. Don't copy
+`docker-compose.override.yml` to production.
+
+#### Portainer
+
+1. **Stacks → Add stack**, then either:
+   - **Repository**: point it at `https://github.com/Kaktusmann/Discord-Widget`, branch `main`, compose path `docker-compose.yml` (leave the override file out of it — it isn't referenced, so this is automatic), or
+   - **Web editor**: paste the contents of `docker-compose.yml` directly.
+2. In the **Environment variables** section, add every variable from
+   `.env.example` (`NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `DISCORD_CLIENT_ID`,
+   `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_APPLICATION_ID`,
+   `DISCORD_WIDGET_CONFIG_ID`, `ADMIN_DISCORD_IDS`, `ENCRYPTION_KEY`) with
+   real values — Portainer also accepts pasting them in `.env` format via the
+   "advanced" editor instead of adding one by one.
+3. **Deploy the stack.** Since the image is public on Docker Hub, no registry
+   credentials are needed — Portainer pulls
+   `kaktusmann/discord-widget-manager:latest` directly.
+4. Point your existing reverse proxy at `127.0.0.1:3000` on the VPS, same as
+   any other deployment method.
+5. **To pick up a new image after a push**: open the stack and use
+   "Pull and redeploy" (or "Update the stack" with the re-pull option
+   checked) — redeploying without that option reuses whatever image is
+   already cached locally, even if `latest` has moved on in Docker Hub.
 
 ### Plesk (Node.js / Passenger)
 

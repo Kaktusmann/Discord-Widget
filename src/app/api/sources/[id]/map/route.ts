@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveJsonPath } from "@/lib/jsonPath";
+import { resolveJsonPath, coerceResolvedValue } from "@/lib/jsonPath";
 import { syncUserWidget } from "@/lib/widgetService";
 
 const bodySchema = z.object({
@@ -36,7 +36,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   let value: string | null = null;
   if (source.lastFetchedJson) {
     const resolved = resolveJsonPath(JSON.parse(source.lastFetchedJson), jsonPath);
-    if (resolved !== undefined) value = JSON.stringify(resolved);
+    if (resolved !== undefined) {
+      const coerced = coerceResolvedValue(resolved, fieldMap.fieldType);
+      if (coerced === undefined) {
+        return NextResponse.json(
+          {
+            error: `Value at "${jsonPath}" (${JSON.stringify(resolved)}) doesn't match this field's type`,
+          },
+          { status: 400 },
+        );
+      }
+      value = JSON.stringify(coerced);
+    }
   }
 
   await prisma.widgetFieldValue.upsert({

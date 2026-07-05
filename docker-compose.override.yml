@@ -1,0 +1,9 @@
+# Automatically merged with docker-compose.yml by `docker compose` when both
+# files sit in the same directory — this is what makes local `docker compose
+# up --build` build from the local Dockerfile instead of pulling from Docker
+# Hub. Production hosts (including Portainer stacks) should deploy from
+# docker-compose.yml alone, without this file, so they always pull the
+# published image rather than building on the server.
+services:
+  app:
+    build: .

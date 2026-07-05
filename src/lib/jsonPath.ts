@@ -18,3 +18,37 @@ export function resolveJsonPath(data: unknown, path: string): unknown {
   }
   return current;
 }
+
+/**
+ * Coerces a raw value pulled out of a user's JSON API into the shape Discord's
+ * dynamic field types expect. In particular, image fields (type 3) expect
+ * `{ url: string }`, but most JSON APIs just return a bare URL string for an
+ * avatar/image field — so a bare string is accepted and wrapped automatically.
+ * Returns undefined if the value doesn't match the field's configured type at
+ * all (e.g. a jsonPath pointing at a number for a string field).
+ */
+export function coerceResolvedValue(
+  resolved: unknown,
+  fieldType: number,
+): string | number | { url: string } | undefined {
+  if (resolved === undefined || resolved === null) return undefined;
+
+  if (fieldType === 1) {
+    return typeof resolved === "string" ? resolved : undefined;
+  }
+  if (fieldType === 2) {
+    return typeof resolved === "number" ? resolved : undefined;
+  }
+  if (fieldType === 3) {
+    if (typeof resolved === "string") return { url: resolved };
+    if (
+      typeof resolved === "object" &&
+      "url" in resolved &&
+      typeof (resolved as { url: unknown }).url === "string"
+    ) {
+      return { url: (resolved as { url: string }).url };
+    }
+    return undefined;
+  }
+  return undefined;
+}
