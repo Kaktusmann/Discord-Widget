@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id              String    @id @default(cuid())
+  discordId       String    @unique
+  username        String
+  discriminator   String?
+  avatar          String?
+  isAdmin         Boolean   @default(false)
+  accessTokenEnc  String?
+  refreshTokenEnc String?
+  tokenExpiresAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  widgetLink  WidgetLink?
+  fieldValues WidgetFieldValue[]
+  urlSources  UrlSource[]
+  apiKey      ApiKey?
+
+  @@map("users")
+}
+
+model WidgetLink {
+  id             String    @id @default(cuid())
+  userId         String    @unique
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  widgetConfigId String
+  published      Boolean   @default(false)
+  linkedAt       DateTime?
+  unlinkedAt     DateTime?
+  lastPushedHash String?
+  lastPushedAt   DateTime?
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@map("widget_links")
+}
+
+model UrlSource {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  url             String
+  enabled         Boolean   @default(true)
+  lastFetchedAt   DateTime?
+  lastFetchedJson String?
+  lastError       String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  fieldValues WidgetFieldValue[]
+
+  @@map("url_sources")
+}
+
+model WidgetFieldValue {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fieldName   String
+  fieldType   Int
+  value       String?
+  dataSource  String     @default("manual") // "manual" | "json_url"
+  urlSourceId String?
+  urlSource   UrlSource? @relation(fields: [urlSourceId], references: [id], onDelete: SetNull)
+  jsonPath    String?
+  updatedAt   DateTime   @updatedAt
+
+  @@unique([userId, fieldName])
+  @@map("widget_field_values")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  keyHash    String    @unique
+  keyPrefix  String
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+  revokedAt  DateTime?
+
+  @@map("api_keys")
+}
+
+model AdminFieldMap {
+  id          String   @id @default(cuid())
+  fieldName   String   @unique
+  fieldType   Int
+  label       String
+  description String?
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("admin_field_map")
+}

@@ -1,0 +1,25 @@
+services:
+  app:
+    build: .
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      DATABASE_URL: "file:/app/data/prod.db"
+      NEXTAUTH_URL: ${NEXTAUTH_URL}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET}
+      DISCORD_CLIENT_ID: ${DISCORD_CLIENT_ID}
+      DISCORD_CLIENT_SECRET: ${DISCORD_CLIENT_SECRET}
+      DISCORD_OAUTH_SCOPE: ${DISCORD_OAUTH_SCOPE:-identify sdk.social_layer}
+      DISCORD_BOT_TOKEN: ${DISCORD_BOT_TOKEN}
+      DISCORD_APPLICATION_ID: ${DISCORD_APPLICATION_ID}
+      DISCORD_WIDGET_CONFIG_ID: ${DISCORD_WIDGET_CONFIG_ID}
+      ADMIN_DISCORD_IDS: ${ADMIN_DISCORD_IDS}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      URL_SOURCE_POLL_INTERVAL_SECONDS: ${URL_SOURCE_POLL_INTERVAL_SECONDS:-60}
+      PORT: "3000"
+    volumes:
+      - widget-data:/app/data
+    restart: unless-stopped
+
+volumes:
+  widget-data:

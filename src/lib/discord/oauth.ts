@@ -1,0 +1,63 @@
+import { discordRequest } from "@/lib/discord/client";
+import { discordConfig } from "@/lib/discord/config";
+import { discordQueue } from "@/lib/discord/rateLimiter";
+
+/**
+ * NOTE: the request bodies below are best-effort reconstructions from third-party
+ * writeups of Discord's undocumented, experimental "Profile Widgets v2" API — not
+ * primary documentation. Before relying on this in production, do the manual
+ * verification spike described in SETUP.md / the project plan (capture the real
+ * request/response via devtools while performing this flow by hand), then adjust
+ * these two functions to match reality. They are intentionally isolated here so
+ * that correction is a small, contained patch.
+ */
+
+export async function authorizeWidgetForUser(userAccessToken: string): Promise<void> {
+  await discordQueue.enqueue(() =>
+    discordRequest({
+      method: "POST",
+      path: "/oauth2/authorize",
+      token: `Bearer ${userAccessToken}`,
+      body: {
+        client_id: discordConfig.clientId,
+        scope: "sdk.social_layer",
+        permissions: "0",
+        authorize: true,
+      },
+    }),
+  );
+}
+
+export async function attachWidgetToProfile(
+  userAccessToken: string,
+  widgetConfigId: string,
+): Promise<void> {
+  // UNVERIFIED: this PUT may REPLACE the user's entire widget list rather than
+  // appending to it. If the spike confirms that, this must become a
+  // GET-current-widgets -> merge -> PUT instead of this naive single-element PUT.
+  await discordQueue.enqueue(() =>
+    discordRequest({
+      method: "PUT",
+      path: "/users/@me/widgets",
+      token: `Bearer ${userAccessToken}`,
+      body: {
+        widgets: [
+          { application_id: discordConfig.applicationId, widget_config_id: widgetConfigId },
+        ],
+      },
+    }),
+  );
+}
+
+export async function detachWidgetFromProfile(userAccessToken: string): Promise<void> {
+  // Same caveat as attachWidgetToProfile: assumes PUT with an empty list removes
+  // only this application's widget rather than clobbering others.
+  await discordQueue.enqueue(() =>
+    discordRequest({
+      method: "PUT",
+      path: "/users/@me/widgets",
+      token: `Bearer ${userAccessToken}`,
+      body: { widgets: [] },
+    }),
+  );
+}
