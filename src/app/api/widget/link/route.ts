@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getFreshAccessToken } from "@/lib/discord/tokenRefresh";
-import { authorizeWidgetForUser, attachWidgetToProfile } from "@/lib/discord/oauth";
+import { attachWidgetToProfile } from "@/lib/discord/oauth";
 import { discordConfig } from "@/lib/discord/config";
 
 export async function POST() {
@@ -16,7 +16,6 @@ export async function POST() {
 
   try {
     const accessToken = await getFreshAccessToken(userId);
-    await authorizeWidgetForUser(accessToken);
     await attachWidgetToProfile(accessToken, discordConfig.widgetConfigId);
 
     const link = await prisma.widgetLink.upsert({

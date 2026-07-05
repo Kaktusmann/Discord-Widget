@@ -12,6 +12,21 @@ import { discordQueue } from "@/lib/discord/rateLimiter";
  * that correction is a small, contained patch.
  */
 
+/**
+ * NOT currently called by the link flow (see src/app/api/widget/link/route.ts).
+ *
+ * This mirrors a POST to /oauth2/authorize seen in third-party writeups of the
+ * *manual, browser-based* version of this trick — visiting a specially-crafted
+ * Discord URL directly in a logged-in browser tab (implicit grant). There, it's
+ * effectively Discord's own consent-screen form submission, which likely relies
+ * on browser session cookies rather than being a portable bearer-token API call.
+ *
+ * Our app instead does a standard server-side Authorization Code grant during
+ * login, where the user already approves the sdk.social_layer scope on
+ * Discord's real consent screen — that grant should already be sufficient, and
+ * calling this afterward returned 401 in testing. Kept here, unused, in case
+ * investigation turns up a legitimate reason to call it after all.
+ */
 export async function authorizeWidgetForUser(userAccessToken: string): Promise<void> {
   await discordQueue.enqueue(() =>
     discordRequest({
