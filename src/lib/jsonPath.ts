@@ -103,12 +103,22 @@ export function templateResolvesFully(data: unknown, template: string): boolean 
  * to the field's configured type — transparently handling both a bare path
  * ("days_watched") and a "{{path}} literal text" template. Shared by the
  * mapping endpoint and the poller so both interpret jsonPath identically.
+ *
+ * A template counts as resolved only if every placeholder it references is
+ * present in this JSON — same "missing data means skip, don't write a
+ * degraded value" behavior a bare path already has. Without this, a response
+ * missing the underlying field (e.g. an API's error payload swapped in for
+ * its real body) would still "resolve" to something like " days" instead of
+ * being treated as absent.
  */
 export function resolveFieldValue(
   data: unknown,
   jsonPath: string,
   fieldType: number,
 ): string | number | { url: string } | undefined {
-  const resolved = isTemplate(jsonPath) ? resolveTemplate(data, jsonPath) : resolveJsonPath(data, jsonPath);
-  return coerceResolvedValue(resolved, fieldType);
+  if (isTemplate(jsonPath)) {
+    if (!templateResolvesFully(data, jsonPath)) return undefined;
+    return coerceResolvedValue(resolveTemplate(data, jsonPath), fieldType);
+  }
+  return coerceResolvedValue(resolveJsonPath(data, jsonPath), fieldType);
 }

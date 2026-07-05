@@ -3,13 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchJsonSafely } from "@/lib/urlFetch";
-import {
-  isTemplate,
-  resolveJsonPath,
-  resolveTemplate,
-  resolveFieldValue,
-  templateResolvesFully,
-} from "@/lib/jsonPath";
+import { isTemplate, resolveJsonPath, resolveTemplate, resolveFieldValue } from "@/lib/jsonPath";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -18,7 +12,7 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const source = await prisma.urlSource.findUnique({
     where: { id },
-    include: { fieldValues: { select: { fieldName: true, jsonPath: true } } },
+    include: { fieldValues: { select: { fieldName: true, jsonPath: true, fieldType: true } } },
   });
   if (!source || source.userId !== session.user.id) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
@@ -26,19 +20,32 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
 
   try {
     const json = await fetchJsonSafely(source.url);
+
+    const mappedFields = source.fieldValues.filter((f) => f.jsonPath);
+    const resolved = Object.fromEntries(
+      mappedFields.map((f) => {
+        const path = f.jsonPath as string;
+        return [f.fieldName, isTemplate(path) ? resolveTemplate(json, path) : resolveJsonPath(json, path)];
+      }),
+    );
+
+    // Same "successful fetch, but nothing actually resolved" check as the
+    // background poller (using resolveFieldValue, not the raw preview above,
+    // so a template degrading to a blank string doesn't count as resolved) —
+    // a happy HTTP status doesn't mean the body was actually useful (e.g. a
+    // GraphQL API returning an error payload as 200).
+    const resolvedCount = mappedFields.filter(
+      (f) => resolveFieldValue(json, f.jsonPath as string, f.fieldType) !== undefined,
+    ).length;
+    const lastError =
+      mappedFields.length > 0 && resolvedCount === 0
+        ? "Fetched successfully, but none of the mapped fields were found in the response — the API may be returning an error payload."
+        : null;
+
     await prisma.urlSource.update({
       where: { id },
-      data: { lastFetchedJson: JSON.stringify(json), lastFetchedAt: new Date(), lastError: null },
+      data: { lastFetchedJson: JSON.stringify(json), lastFetchedAt: new Date(), lastError },
     });
-
-    const resolved = Object.fromEntries(
-      source.fieldValues
-        .filter((f) => f.jsonPath)
-        .map((f) => {
-          const path = f.jsonPath as string;
-          return [f.fieldName, isTemplate(path) ? resolveTemplate(json, path) : resolveJsonPath(json, path)];
-        }),
-    );
 
     // Auto-detect mappings for fields not already mapped to this source: try
     // the admin-set default path first, otherwise fall back to a bare path
@@ -52,7 +59,6 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
       .filter((f) => !alreadyMapped.has(f.fieldName))
       .map((f) => {
         const candidatePath = f.defaultJsonPath || f.fieldName;
-        if (isTemplate(candidatePath) && !templateResolvesFully(json, candidatePath)) return null;
         const value = resolveFieldValue(json, candidatePath, f.fieldType);
         return value !== undefined ? { fieldName: f.fieldName, jsonPath: candidatePath, value } : null;
       })

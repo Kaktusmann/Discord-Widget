@@ -31,11 +31,8 @@ async function pollOnce(): Promise<void> {
 
     try {
       const json = await fetchJsonSafely(source.url);
-      await prisma.urlSource.update({
-        where: { id: source.id },
-        data: { lastFetchedJson: JSON.stringify(json), lastFetchedAt: new Date(), lastError: null },
-      });
 
+      let resolvedCount = 0;
       for (const field of source.fieldValues) {
         if (!field.jsonPath) continue;
         // Handles both a bare path ("days_watched") and a "{{path}} literal"
@@ -45,6 +42,7 @@ async function pollOnce(): Promise<void> {
         // updating it rather than pushing a shape Discord will reject.
         const coerced = resolveFieldValue(json, field.jsonPath, field.fieldType);
         if (coerced === undefined) continue;
+        resolvedCount += 1;
 
         const encoded = JSON.stringify(coerced);
         if (encoded !== field.value) {
@@ -52,6 +50,21 @@ async function pollOnce(): Promise<void> {
         }
         affectedUserIds.add(field.userId);
       }
+
+      // A 200 OK with a body that doesn't resolve any mapped field (e.g. an
+      // API returning an error payload with a "successful" status code, like
+      // GraphQL APIs commonly do) is a failure worth surfacing — not a quiet
+      // no-op that leaves the widget frozen on stale data with no error shown.
+      const mappedFieldCount = source.fieldValues.filter((f) => f.jsonPath).length;
+      const lastError =
+        mappedFieldCount > 0 && resolvedCount === 0
+          ? "Fetched successfully, but none of the mapped fields were found in the response — the API may be returning an error payload."
+          : null;
+
+      await prisma.urlSource.update({
+        where: { id: source.id },
+        data: { lastFetchedJson: JSON.stringify(json), lastFetchedAt: new Date(), lastError },
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await prisma.urlSource.update({ where: { id: source.id }, data: { lastError: message } });
