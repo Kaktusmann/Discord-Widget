@@ -8,6 +8,21 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npx prisma generate
+
+# next build imports every route module (including lib/env.ts) while collecting
+# page data, even though none of it actually runs. These are throwaway values
+# just to satisfy that env validation at build time — the real secrets are
+# injected as container environment variables at runtime (see docker-compose.yml)
+# and take over as soon as the process starts.
+ENV DATABASE_URL="file:./build-placeholder.db" \
+    NEXTAUTH_URL="http://localhost:3000" \
+    NEXTAUTH_SECRET="build-placeholder" \
+    DISCORD_CLIENT_ID="build-placeholder" \
+    DISCORD_CLIENT_SECRET="build-placeholder" \
+    DISCORD_BOT_TOKEN="build-placeholder" \
+    DISCORD_APPLICATION_ID="build-placeholder" \
+    DISCORD_WIDGET_CONFIG_ID="build-placeholder" \
+    ENCRYPTION_KEY="build-placeholder"
 RUN npm run build
 
 FROM node:22-alpine AS runner
