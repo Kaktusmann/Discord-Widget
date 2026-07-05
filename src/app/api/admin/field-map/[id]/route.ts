@@ -24,6 +24,20 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  await prisma.adminFieldMap.delete({ where: { id } });
+
+  const field = await prisma.adminFieldMap.findUnique({ where: { id } });
+  if (!field) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  // WidgetFieldValue rows are linked to AdminFieldMap only by matching
+  // fieldName (no foreign key) — without this, a deleted/renamed field leaves
+  // stale values behind that keep getting pushed as unrecognized dynamic
+  // fields for every user who had it mapped.
+  await prisma.$transaction([
+    prisma.widgetFieldValue.deleteMany({ where: { fieldName: field.fieldName } }),
+    prisma.adminFieldMap.delete({ where: { id } }),
+  ]);
+
   return NextResponse.json({ ok: true });
 }
