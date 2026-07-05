@@ -41,13 +41,28 @@ Sign in with Discord, then (as an admin, per `ADMIN_DISCORD_IDS`) visit
 
 ### Docker
 
+Images are built and pushed to Docker Hub automatically by
+[`.github/workflows/docker-publish.yml`](./.github/workflows/docker-publish.yml)
+on every push to `main` (tagged `latest`) and on version tags like `v1.0.0`
+(tagged with that semver). Requires the `DOCKERHUB_USERNAME` and
+`DOCKERHUB_TOKEN` secrets to be set on the GitHub repo (Settings → Secrets and
+variables → Actions — the token should be a Docker Hub access token, not your
+account password).
+
+On the VPS, `docker-compose.yml` pulls the published image
+(`kaktusmann/discord-widget-manager:latest`) rather than building locally:
+
 ```bash
 cp .env.example .env   # fill in real values
-docker compose up -d --build
+docker compose pull
+docker compose up -d
 ```
 
+To redeploy after a new push: `docker compose pull && docker compose up -d`.
+
 The SQLite file lives in the `widget-data` named volume, so it survives
-rebuilds.
+redeploys. `build: .` is also still set in `docker-compose.yml`, so local
+development/testing can use `docker compose up -d --build` instead of pulling.
 
 ### Plesk (Node.js / Passenger)
 
