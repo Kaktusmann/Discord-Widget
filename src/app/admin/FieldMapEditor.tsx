@@ -8,6 +8,7 @@ interface Field {
   fieldName: string;
   fieldType: number;
   label: string;
+  defaultJsonPath: string | null;
   sortOrder: number;
 }
 
@@ -19,6 +20,7 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
   const [fieldName, setFieldName] = useState("");
   const [label, setLabel] = useState("");
   const [fieldType, setFieldType] = useState(1);
+  const [defaultJsonPath, setDefaultJsonPath] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   function addField() {
@@ -27,7 +29,13 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
       const res = await fetch("/api/admin/field-map", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fieldName, label, fieldType, sortOrder: fields.length }),
+        body: JSON.stringify({
+          fieldName,
+          label,
+          fieldType,
+          defaultJsonPath: defaultJsonPath || undefined,
+          sortOrder: fields.length,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -36,6 +44,7 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
       }
       setFieldName("");
       setLabel("");
+      setDefaultJsonPath("");
       router.refresh();
     });
   }
@@ -51,7 +60,9 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
     <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="font-medium">Field map</h2>
       <p className="text-sm text-zinc-500">
-        Each row must match a dynamic field name from your widget_config exactly.
+        Each row must match a dynamic field name from your widget_config exactly. The default json
+        path prefills the mapping box on the dashboard, since most users&apos; source JSON shares
+        the same shape — they can still override it.
       </p>
 
       <table className="mt-3 w-full text-sm">
@@ -60,6 +71,7 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
             <th className="pb-2 font-normal">Field name</th>
             <th className="pb-2 font-normal">Label</th>
             <th className="pb-2 font-normal">Type</th>
+            <th className="pb-2 font-normal">Default json path</th>
             <th className="pb-2 font-normal" />
           </tr>
         </thead>
@@ -69,6 +81,7 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
               <td className="py-2 font-mono text-xs">{f.fieldName}</td>
               <td className="py-2">{f.label}</td>
               <td className="py-2 text-zinc-500">{TYPE_LABELS[f.fieldType]}</td>
+              <td className="py-2 font-mono text-xs text-zinc-500">{f.defaultJsonPath ?? "—"}</td>
               <td className="py-2 text-right">
                 <button
                   disabled={isPending}
@@ -105,6 +118,12 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
           <option value={2}>number</option>
           <option value={3}>image</option>
         </select>
+        <input
+          value={defaultJsonPath}
+          onChange={(e) => setDefaultJsonPath(e.target.value)}
+          placeholder="Default json path (optional)"
+          className="rounded border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-700"
+        />
         <button
           disabled={isPending || !fieldName || !label}
           onClick={addField}

@@ -34,8 +34,9 @@ Sign in with Discord, then (as an admin, per `ADMIN_DISCORD_IDS`) visit
   the project plan / `SETUP.md` for what's unverified.
 - `src/lib/urlSourcePoller.ts` runs an in-process interval (started once via
   `src/instrumentation.ts`) that polls user-configured JSON URLs and pushes
-  changed field values through the same dedupe/rate-limit pipeline used by
-  the manual push API (`src/lib/widgetService.ts`'s `syncUserWidget`).
+  changed field values through the shared dedupe/rate-limit pipeline
+  (`src/lib/widgetService.ts`'s `syncUserWidget`) also used by the dashboard's
+  "Push now" button.
 
 ## Deployment
 

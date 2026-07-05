@@ -7,6 +7,7 @@ const createSchema = z.object({
   fieldType: z.union([z.literal(1), z.literal(2), z.literal(3)]),
   label: z.string().min(1),
   description: z.string().optional(),
+  defaultJsonPath: z.string().optional(),
   sortOrder: z.number().int().optional(),
 });
 

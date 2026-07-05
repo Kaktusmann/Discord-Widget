@@ -26,7 +26,6 @@ model User {
   widgetLink  WidgetLink?
   fieldValues WidgetFieldValue[]
   urlSources  UrlSource[]
-  apiKey      ApiKey?
 
   @@map("users")
 }
@@ -82,28 +81,19 @@ model WidgetFieldValue {
   @@map("widget_field_values")
 }
 
-model ApiKey {
-  id         String    @id @default(cuid())
-  userId     String    @unique
-  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  keyHash    String    @unique
-  keyPrefix  String
-  createdAt  DateTime  @default(now())
-  lastUsedAt DateTime?
-  revokedAt  DateTime?
-
-  @@map("api_keys")
-}
-
 model AdminFieldMap {
-  id          String   @id @default(cuid())
-  fieldName   String   @unique
-  fieldType   Int
-  label       String
-  description String?
-  sortOrder   Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(cuid())
+  fieldName       String   @unique
+  fieldType       Int
+  label           String
+  description     String?
+  // Prefilled into the jsonPath input when a user maps this field to a URL
+  // source — most users' source JSON shares the same shape, so this saves
+  // them from retyping the same path/template every time.
+  defaultJsonPath String?
+  sortOrder       Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@map("admin_field_map")
 }

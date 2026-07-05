@@ -10,7 +10,10 @@ export default async function AdminPage() {
   if (!session) redirect("/signin");
   if (!session.user.isAdmin) redirect("/dashboard");
 
-  const fields = await prisma.adminFieldMap.findMany({ orderBy: { sortOrder: "asc" } });
+  const [fields, users] = await Promise.all([
+    prisma.adminFieldMap.findMany({ orderBy: { sortOrder: "asc" } }),
+    prisma.user.findMany({ include: { widgetLink: true }, orderBy: { createdAt: "asc" } }),
+  ]);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 p-8">
@@ -34,12 +37,47 @@ export default async function AdminPage() {
         </p>
       </section>
 
+      <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+        <h2 className="font-medium">Users</h2>
+        <table className="mt-3 w-full text-sm">
+          <thead>
+            <tr className="text-left text-zinc-500">
+              <th className="pb-2 font-normal">User</th>
+              <th className="pb-2 font-normal">Linked</th>
+              <th className="pb-2 font-normal">Last updated</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((u) => (
+              <tr key={u.id} className="border-t border-zinc-100 dark:border-zinc-900">
+                <td className="py-2">
+                  {u.username}
+                  {u.isAdmin && <span className="ml-1 text-xs text-zinc-400">(admin)</span>}
+                </td>
+                <td className="py-2 text-zinc-500">
+                  {u.widgetLink?.published ? "Yes" : "No"}
+                </td>
+                <td className="py-2 text-zinc-500">
+                  {u.widgetLink?.lastPushedAt
+                    ? new Date(u.widgetLink.lastPushedAt).toLocaleString()
+                    : "Never"}
+                  {u.widgetLink?.lastError && (
+                    <span className="ml-2 text-xs text-red-500">{u.widgetLink.lastError}</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </section>
+
       <FieldMapEditor
         fields={fields.map((f) => ({
           id: f.id,
           fieldName: f.fieldName,
           fieldType: f.fieldType,
           label: f.label,
+          defaultJsonPath: f.defaultJsonPath,
           sortOrder: f.sortOrder,
         }))}
       />

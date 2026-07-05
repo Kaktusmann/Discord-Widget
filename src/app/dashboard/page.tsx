@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { LinkPanel } from "@/app/dashboard/LinkPanel";
-import { ApiKeyPanel } from "@/app/dashboard/ApiKeyPanel";
 import { FieldsTable } from "@/app/dashboard/FieldsTable";
 import { SourcesPanel } from "@/app/dashboard/SourcesPanel";
 
@@ -13,11 +12,10 @@ export default async function DashboardPage() {
 
   const userId = session.user.id;
 
-  const [link, fieldValues, fieldMap, apiKey, sources] = await Promise.all([
+  const [link, fieldValues, fieldMap, sources] = await Promise.all([
     prisma.widgetLink.findUnique({ where: { userId } }),
     prisma.widgetFieldValue.findMany({ where: { userId } }),
     prisma.adminFieldMap.findMany({ orderBy: { sortOrder: "asc" } }),
-    prisma.apiKey.findUnique({ where: { userId } }),
     prisma.urlSource.findMany({
       where: { userId },
       include: { fieldValues: { select: { fieldName: true, jsonPath: true } } },
@@ -60,7 +58,11 @@ export default async function DashboardPage() {
       />
 
       <SourcesPanel
-        fieldMap={fieldMap.map((f) => ({ fieldName: f.fieldName, label: f.label }))}
+        fieldMap={fieldMap.map((f) => ({
+          fieldName: f.fieldName,
+          label: f.label,
+          defaultJsonPath: f.defaultJsonPath,
+        }))}
         sources={sources.map((s) => ({
           id: s.id,
           url: s.url,
@@ -70,8 +72,6 @@ export default async function DashboardPage() {
           fields: s.fieldValues,
         }))}
       />
-
-      <ApiKeyPanel exists={Boolean(apiKey && !apiKey.revokedAt)} keyPrefix={apiKey?.keyPrefix ?? null} />
     </div>
   );
 }

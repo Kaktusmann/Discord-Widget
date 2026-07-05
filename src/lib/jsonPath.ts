@@ -19,6 +19,29 @@ export function resolveJsonPath(data: unknown, path: string): unknown {
   return current;
 }
 
+const TEMPLATE_PLACEHOLDER = /\{\{\s*([^}]+?)\s*\}\}/g;
+
+/** A jsonPath value is treated as a template (rather than a single bare path) if it contains a "{{ }}" placeholder, e.g. "{{days_watched}} days". */
+export function isTemplate(pathOrTemplate: string): boolean {
+  return pathOrTemplate.includes("{{");
+}
+
+/**
+ * Substitutes every "{{path}}" placeholder in a template string with the
+ * value resolved at that path in the source JSON, e.g. resolving
+ * "{{days_watched}} days" against `{ days_watched: 83.5 }` produces
+ * "83.5 days". Missing paths resolve to an empty string rather than leaving
+ * the placeholder or throwing.
+ */
+export function resolveTemplate(data: unknown, template: string): string {
+  return template.replace(TEMPLATE_PLACEHOLDER, (_match, path: string) => {
+    const resolved = resolveJsonPath(data, path);
+    if (resolved === undefined || resolved === null) return "";
+    if (typeof resolved === "object") return JSON.stringify(resolved);
+    return String(resolved);
+  });
+}
+
 /**
  * Coerces a raw value pulled out of a user's JSON API into the shape Discord's
  * dynamic field types expect. In particular, image fields (type 3) expect
@@ -57,4 +80,19 @@ export function coerceResolvedValue(
     return undefined;
   }
   return undefined;
+}
+
+/**
+ * Resolves a field's stored `jsonPath` against the source JSON and coerces it
+ * to the field's configured type — transparently handling both a bare path
+ * ("days_watched") and a "{{path}} literal text" template. Shared by the
+ * mapping endpoint and the poller so both interpret jsonPath identically.
+ */
+export function resolveFieldValue(
+  data: unknown,
+  jsonPath: string,
+  fieldType: number,
+): string | number | { url: string } | undefined {
+  const resolved = isTemplate(jsonPath) ? resolveTemplate(data, jsonPath) : resolveJsonPath(data, jsonPath);
+  return coerceResolvedValue(resolved, fieldType);
 }

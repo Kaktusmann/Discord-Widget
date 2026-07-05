@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 interface FieldOption {
   fieldName: string;
   label: string;
+  defaultJsonPath: string | null;
 }
 
 interface SourceEntry {
@@ -22,7 +23,12 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
   const [isPending, startTransition] = useTransition();
   const [testResult, setTestResult] = useState<{ json?: unknown; error?: string } | null>(null);
   const [fieldName, setFieldName] = useState(fieldOptions[0]?.fieldName ?? "");
-  const [jsonPath, setJsonPath] = useState("");
+  const [jsonPath, setJsonPath] = useState(fieldOptions[0]?.defaultJsonPath ?? "");
+
+  function selectField(name: string) {
+    setFieldName(name);
+    setJsonPath(fieldOptions.find((f) => f.fieldName === name)?.defaultJsonPath ?? "");
+  }
 
   function testFetch() {
     startTransition(async () => {
@@ -100,7 +106,7 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <select
             value={fieldName}
-            onChange={(e) => setFieldName(e.target.value)}
+            onChange={(e) => selectField(e.target.value)}
             className="rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
           >
             {fieldOptions.map((f) => (
@@ -112,7 +118,7 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
           <input
             value={jsonPath}
             onChange={(e) => setJsonPath(e.target.value)}
-            placeholder="json path, e.g. data.stats.wins"
+            placeholder="json path, e.g. data.stats.wins, or a template like {{days_watched}} days"
             className="min-w-48 flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
           />
           <button
@@ -163,7 +169,10 @@ export function SourcesPanel({
       <h2 className="font-medium">JSON URL sources</h2>
       <p className="text-sm text-zinc-500">
         Point a field at your own API URL and a JSON path. The server polls it on a timer and
-        pushes changes automatically.
+        pushes changes automatically. Use a plain path (e.g. <code>days_watched</code>) to pass
+        the value through as-is, or wrap it in a template like{" "}
+        <code>{"{{days_watched}} days"}</code> to combine it with literal text (string fields
+        only).
       </p>
 
       <div className="mt-3 flex gap-2">

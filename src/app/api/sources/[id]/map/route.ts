@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { resolveJsonPath, coerceResolvedValue } from "@/lib/jsonPath";
+import { isTemplate, resolveJsonPath, resolveTemplate, coerceResolvedValue } from "@/lib/jsonPath";
 import { syncUserWidget } from "@/lib/widgetService";
 
 const bodySchema = z.object({
@@ -35,7 +35,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
 
   let value: string | null = null;
   if (source.lastFetchedJson) {
-    const resolved = resolveJsonPath(JSON.parse(source.lastFetchedJson), jsonPath);
+    const sourceJson = JSON.parse(source.lastFetchedJson);
+    const resolved = isTemplate(jsonPath) ? resolveTemplate(sourceJson, jsonPath) : resolveJsonPath(sourceJson, jsonPath);
     if (resolved !== undefined) {
       const coerced = coerceResolvedValue(resolved, fieldMap.fieldType);
       if (coerced === undefined) {

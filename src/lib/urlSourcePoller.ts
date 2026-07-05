@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { fetchJsonSafely } from "@/lib/urlFetch";
-import { resolveJsonPath, coerceResolvedValue } from "@/lib/jsonPath";
+import { resolveFieldValue } from "@/lib/jsonPath";
 import { syncUserWidget } from "@/lib/widgetService";
 import { env } from "@/lib/env";
 
@@ -38,12 +38,12 @@ async function pollOnce(): Promise<void> {
 
       for (const field of source.fieldValues) {
         if (!field.jsonPath) continue;
-        const resolved = resolveJsonPath(json, field.jsonPath);
-        // Bare URL strings are coerced into Discord's { url } shape for image
-        // fields (fieldType 3) — see coerceResolvedValue for why. If the
-        // fetched JSON doesn't match the field's configured type this cycle,
-        // skip updating it rather than pushing a shape Discord will reject.
-        const coerced = coerceResolvedValue(resolved, field.fieldType);
+        // Handles both a bare path ("days_watched") and a "{{path}} literal"
+        // template, and coerces to the field's type (e.g. bare URL strings
+        // become Discord's { url } shape for image fields). If the fetched
+        // JSON doesn't match the field's configured type this cycle, skip
+        // updating it rather than pushing a shape Discord will reject.
+        const coerced = resolveFieldValue(json, field.jsonPath, field.fieldType);
         if (coerced === undefined) continue;
 
         const encoded = JSON.stringify(coerced);

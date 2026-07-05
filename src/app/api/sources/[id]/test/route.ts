@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { fetchJsonSafely } from "@/lib/urlFetch";
-import { resolveJsonPath } from "@/lib/jsonPath";
+import { isTemplate, resolveJsonPath, resolveTemplate } from "@/lib/jsonPath";
 
 export async function POST(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const session = await getServerSession(authOptions);
@@ -28,7 +28,10 @@ export async function POST(_req: Request, { params }: { params: Promise<{ id: st
     const resolved = Object.fromEntries(
       source.fieldValues
         .filter((f) => f.jsonPath)
-        .map((f) => [f.fieldName, resolveJsonPath(json, f.jsonPath as string)]),
+        .map((f) => {
+          const path = f.jsonPath as string;
+          return [f.fieldName, isTemplate(path) ? resolveTemplate(json, path) : resolveJsonPath(json, path)];
+        }),
     );
 
     return NextResponse.json({ ok: true, json, resolved });
