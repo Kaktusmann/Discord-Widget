@@ -24,12 +24,35 @@ export const authOptions: NextAuthOptions = {
         params: { scope: env.DISCORD_OAUTH_SCOPE },
       },
       // The sdk.social_layer scope makes Discord's token response include an
-      // id_token even without the openid scope. next-auth's OAuth client
-      // refuses to process that response unless idToken is set. We still want
-      // the well-documented REST profile shape (id/username/discriminator/
-      // avatar) rather than whatever undocumented claims the id_token carries
-      // for this scope, so userinfo.request is overridden to fetch it directly.
-      idToken: true,
+      // id_token even without the openid scope. next-auth's default OAuth
+      // client either refuses to process that response at all (plain OAuth2
+      // path) or, if told it's an id_token (idToken: true), tries to validate
+      // it as a full OIDC token against issuer/JWKS metadata Discord doesn't
+      // publish for this undocumented scope — both fail. Bypassing all of
+      // that by doing the code-for-token exchange ourselves; the id_token in
+      // the response is simply ignored, and state/PKCE/nonce checks against
+      // the callback request still happen upstream of this, unaffected.
+      token: {
+        async request({ params }) {
+          const res = await fetch("https://discord.com/api/oauth2/token", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded" },
+            body: new URLSearchParams({
+              client_id: env.DISCORD_CLIENT_ID,
+              client_secret: env.DISCORD_CLIENT_SECRET,
+              grant_type: "authorization_code",
+              code: params.code as string,
+              redirect_uri: `${env.NEXTAUTH_URL}/api/auth/callback/discord`,
+            }),
+          });
+          if (!res.ok) {
+            throw new Error(`Discord token exchange failed: ${res.status} ${await res.text()}`);
+          }
+          return { tokens: await res.json() };
+        },
+      },
+      // Profile info still comes from the well-documented REST endpoint
+      // (id/username/discriminator/avatar), not from the id_token's claims.
       userinfo: {
         url: "https://discord.com/api/users/@me",
         async request({ tokens }) {
