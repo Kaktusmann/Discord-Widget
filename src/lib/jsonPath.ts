@@ -34,7 +34,13 @@ export function coerceResolvedValue(
   if (resolved === undefined || resolved === null) return undefined;
 
   if (fieldType === 1) {
-    return typeof resolved === "string" ? resolved : undefined;
+    if (typeof resolved === "string") return resolved;
+    // Many JSON APIs return numbers for what a widget_config still declares
+    // as a string field (e.g. AniList's `total_anime: 552` vs. a widget field
+    // sample-valued as "552") — auto-stringify rather than reject, since the
+    // string representation is exactly what's wanted here.
+    if (typeof resolved === "number") return String(resolved);
+    return undefined;
   }
   if (fieldType === 2) {
     return typeof resolved === "number" ? resolved : undefined;
