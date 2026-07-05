@@ -1,12 +1,18 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface FieldOption {
   fieldName: string;
   label: string;
   defaultJsonPath: string | null;
+}
+
+interface Suggestion {
+  fieldName: string;
+  jsonPath: string;
+  value: unknown;
 }
 
 interface SourceEntry {
@@ -18,46 +24,96 @@ interface SourceEntry {
   fields: { fieldName: string; jsonPath: string | null }[];
 }
 
+function labelFor(fieldOptions: FieldOption[], fieldName: string): string {
+  return fieldOptions.find((f) => f.fieldName === fieldName)?.label ?? fieldName;
+}
+
 function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldOptions: FieldOption[] }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [loading, setLoading] = useState<"test" | "map" | "remove" | null>(null);
   const [testResult, setTestResult] = useState<{ json?: unknown; error?: string } | null>(null);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [fieldName, setFieldName] = useState(fieldOptions[0]?.fieldName ?? "");
   const [jsonPath, setJsonPath] = useState(fieldOptions[0]?.defaultJsonPath ?? "");
+  const isPending = loading !== null;
 
   function selectField(name: string) {
     setFieldName(name);
     setJsonPath(fieldOptions.find((f) => f.fieldName === name)?.defaultJsonPath ?? "");
   }
 
-  function testFetch() {
-    startTransition(async () => {
+  async function testFetch() {
+    setLoading("test");
+    try {
       const res = await fetch(`/api/sources/${source.id}/test`, { method: "POST" });
       const data = await res.json();
-      setTestResult(res.ok ? { json: data.json } : { error: data.detail ?? data.error });
+      if (!res.ok) {
+        setTestResult({ error: data.detail ?? data.error });
+        setSuggestions([]);
+      } else {
+        setTestResult({ json: data.json });
+        setSuggestions(data.suggestions ?? []);
+      }
       router.refresh();
-    });
+    } catch (err) {
+      setTestResult({ error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setLoading(null);
+    }
   }
 
-  function mapField() {
+  async function mapField() {
     if (!fieldName || !jsonPath) return;
-    startTransition(async () => {
+    setLoading("map");
+    try {
       const res = await fetch(`/api/sources/${source.id}/map`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ fieldName, jsonPath }),
       });
       const data = await res.json();
-      if (!res.ok) setTestResult({ error: data.detail ?? data.error });
+      setTestResult(res.ok ? null : { error: data.detail ?? data.error });
       router.refresh();
-    });
+    } catch (err) {
+      setTestResult({ error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setLoading(null);
+    }
   }
 
-  function remove() {
-    startTransition(async () => {
+  async function mapSuggested() {
+    if (suggestions.length === 0) return;
+    setLoading("map");
+    try {
+      const res = await fetch(`/api/sources/${source.id}/map-bulk`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          mappings: suggestions.map(({ fieldName, jsonPath }) => ({ fieldName, jsonPath })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTestResult({ error: data.detail ?? data.error });
+      } else {
+        setSuggestions([]);
+      }
+      router.refresh();
+    } catch (err) {
+      setTestResult({ error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      setLoading(null);
+    }
+  }
+
+  async function remove() {
+    setLoading("remove");
+    try {
       await fetch(`/api/sources/${source.id}`, { method: "DELETE" });
       router.refresh();
-    });
+    } finally {
+      setLoading(null);
+    }
   }
 
   return (
@@ -68,12 +124,16 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
           <button
             disabled={isPending}
             onClick={testFetch}
-            className="rounded border border-zinc-300 px-2 py-1 text-xs dark:border-zinc-700"
+            className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-700"
           >
-            Test fetch
+            {loading === "test" ? "Fetching…" : "Test fetch"}
           </button>
-          <button disabled={isPending} onClick={remove} className="text-xs text-red-500">
-            Remove
+          <button
+            disabled={isPending}
+            onClick={remove}
+            className="text-xs text-red-500 disabled:opacity-50"
+          >
+            {loading === "remove" ? "Removing…" : "Remove"}
           </button>
         </div>
       </div>
@@ -102,33 +162,58 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
       )}
       {testResult?.error && <p className="mt-1 text-xs text-red-500">{testResult.error}</p>}
 
-      {fieldOptions.length > 0 && (
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <select
-            value={fieldName}
-            onChange={(e) => selectField(e.target.value)}
-            className="rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
-          >
-            {fieldOptions.map((f) => (
-              <option key={f.fieldName} value={f.fieldName}>
-                {f.label}
-              </option>
+      {suggestions.length > 0 && (
+        <div className="mt-2 rounded border border-zinc-200 p-2 dark:border-zinc-800">
+          <p className="text-xs text-zinc-500">
+            Auto-detected {suggestions.length} matching field{suggestions.length > 1 ? "s" : ""}:
+          </p>
+          <ul className="mt-1 text-xs text-zinc-500">
+            {suggestions.map((s) => (
+              <li key={s.fieldName}>
+                {labelFor(fieldOptions, s.fieldName)} ← {s.jsonPath} ({JSON.stringify(s.value)})
+              </li>
             ))}
-          </select>
-          <input
-            value={jsonPath}
-            onChange={(e) => setJsonPath(e.target.value)}
-            placeholder="json path, e.g. data.stats.wins, or a template like {{days_watched}} days"
-            className="min-w-48 flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
-          />
+          </ul>
           <button
-            disabled={isPending || !jsonPath}
-            onClick={mapField}
-            className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-700"
+            disabled={isPending}
+            onClick={mapSuggested}
+            className="mt-2 rounded bg-[#5865F2] px-2 py-1 text-xs text-white disabled:opacity-50"
           >
-            Map field
+            {loading === "map" ? "Mapping…" : `Map all ${suggestions.length}`}
           </button>
         </div>
+      )}
+
+      {fieldOptions.length > 0 && (
+        <details className="mt-2">
+          <summary className="cursor-pointer text-xs text-zinc-500">Map a field manually</summary>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select
+              value={fieldName}
+              onChange={(e) => selectField(e.target.value)}
+              className="rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
+            >
+              {fieldOptions.map((f) => (
+                <option key={f.fieldName} value={f.fieldName}>
+                  {f.label}
+                </option>
+              ))}
+            </select>
+            <input
+              value={jsonPath}
+              onChange={(e) => setJsonPath(e.target.value)}
+              placeholder="json path, e.g. data.stats.wins, or a template like {{days_watched}} days"
+              className="min-w-48 flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
+            />
+            <button
+              disabled={isPending || !jsonPath}
+              onClick={mapField}
+              className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-700"
+            >
+              {loading === "map" ? "Mapping…" : "Map field"}
+            </button>
+          </div>
+        </details>
       )}
     </li>
   );
@@ -142,13 +227,14 @@ export function SourcesPanel({
   sources: SourceEntry[];
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [newUrl, setNewUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function addSource() {
+  async function addSource() {
     setError(null);
-    startTransition(async () => {
+    setIsPending(true);
+    try {
       const res = await fetch("/api/sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -161,18 +247,20 @@ export function SourcesPanel({
       }
       setNewUrl("");
       router.refresh();
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (
     <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="font-medium">JSON URL sources</h2>
       <p className="text-sm text-zinc-500">
-        Point a field at your own API URL and a JSON path. The server polls it on a timer and
-        pushes changes automatically. Use a plain path (e.g. <code>days_watched</code>) to pass
-        the value through as-is, or wrap it in a template like{" "}
-        <code>{"{{days_watched}} days"}</code> to combine it with literal text (string fields
-        only).
+        Point a field at your own API URL. After <strong>Test fetch</strong>, fields whose JSON key
+        matches a field name (or its admin-set default path) are auto-detected — just click{" "}
+        <strong>Map all</strong>. For anything else, use the manual path/template box.
       </p>
 
       <div className="mt-3 flex gap-2">

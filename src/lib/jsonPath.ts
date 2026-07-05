@@ -83,6 +83,22 @@ export function coerceResolvedValue(
 }
 
 /**
+ * True only if every "{{path}}" placeholder in the template resolves to a
+ * defined value. Used to gate auto-detected suggestions — resolveTemplate
+ * itself degrades missing paths to an empty string (fine for a field a user
+ * deliberately mapped), but that same behavior would make a template whose
+ * data simply isn't present in this JSON look like a valid suggestion.
+ */
+export function templateResolvesFully(data: unknown, template: string): boolean {
+  let allDefined = true;
+  template.replace(TEMPLATE_PLACEHOLDER, (_match, path: string) => {
+    if (resolveJsonPath(data, path) === undefined) allDefined = false;
+    return "";
+  });
+  return allDefined;
+}
+
+/**
  * Resolves a field's stored `jsonPath` against the source JSON and coerces it
  * to the field's configured type — transparently handling both a bare path
  * ("days_watched") and a "{{path}} literal text" template. Shared by the

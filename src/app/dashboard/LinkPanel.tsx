@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export function LinkPanel({
@@ -13,19 +13,24 @@ export function LinkPanel({
   lastPushedAt: string | null;
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  function handle(action: "link" | "unlink") {
+  async function handle(action: "link" | "unlink") {
     setError(null);
-    startTransition(async () => {
+    setIsPending(true);
+    try {
       const res = await fetch(`/api/widget/${action}`, { method: "POST" });
       const data = await res.json();
       if (!res.ok) {
         setError(data.detail ?? data.error ?? "Request failed");
       }
       router.refresh();
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (

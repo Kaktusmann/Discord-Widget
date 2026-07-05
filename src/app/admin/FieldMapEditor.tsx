@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface Field {
@@ -16,16 +16,17 @@ const TYPE_LABELS: Record<number, string> = { 1: "string", 2: "number", 3: "imag
 
 export function FieldMapEditor({ fields }: { fields: Field[] }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [fieldName, setFieldName] = useState("");
   const [label, setLabel] = useState("");
   const [fieldType, setFieldType] = useState(1);
   const [defaultJsonPath, setDefaultJsonPath] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  function addField() {
+  async function addField() {
     setError(null);
-    startTransition(async () => {
+    setIsPending(true);
+    try {
       const res = await fetch("/api/admin/field-map", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -46,14 +47,21 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
       setLabel("");
       setDefaultJsonPath("");
       router.refresh();
-    });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsPending(false);
+    }
   }
 
-  function removeField(id: string) {
-    startTransition(async () => {
+  async function removeField(id: string) {
+    setIsPending(true);
+    try {
       await fetch(`/api/admin/field-map/${id}`, { method: "DELETE" });
       router.refresh();
-    });
+    } finally {
+      setIsPending(false);
+    }
   }
 
   return (

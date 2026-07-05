@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 interface FieldMapEntry {
@@ -35,19 +35,24 @@ export function FieldsTable({
   fieldValues: FieldValueEntry[];
 }) {
   const router = useRouter();
-  const [isPending, startTransition] = useTransition();
+  const [isPending, setIsPending] = useState(false);
   const [result, setResult] = useState<string | null>(null);
 
   const valueByField = new Map(fieldValues.map((f) => [f.fieldName, f]));
 
-  function pushNow() {
+  async function pushNow() {
     setResult(null);
-    startTransition(async () => {
+    setIsPending(true);
+    try {
       const res = await fetch("/api/widget/push-test", { method: "POST" });
       const data = await res.json();
       setResult(res.ok ? `${data.reason}` : (data.detail ?? data.error ?? "Failed"));
       router.refresh();
-    });
+    } catch (err) {
+      setResult(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsPending(false);
+    }
   }
 
   if (fieldMap.length === 0) {
