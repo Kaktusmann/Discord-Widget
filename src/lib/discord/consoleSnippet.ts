@@ -137,3 +137,113 @@ export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUs
   console.error("[Widget] Failed: " + res.status + " —", body && body.message || body);
 })();`;
 }
+
+/**
+ * Generates the browser-console script that creates (or, if `existingConfigId`
+ * is known, updates in place) and publishes a widget_config for the user's
+ * own application, from the site's shared field map — see
+ * widgetConfigBuilder.ts for how `surfaces` is derived. Confirmed against a
+ * real, already-published widget_config's actual API response
+ * (`GET /applications/{id}/widget-configs`), not guessed.
+ *
+ * Passing `existingConfigId` switches the script from `POST .../widget-configs`
+ * (create) to `PATCH .../widget-configs/{id}` (update) — the same mechanism
+ * discordwidgets.com uses so re-editing a layout doesn't accumulate duplicate
+ * configs. On first run (no existingConfigId yet), the script prints the new
+ * config_id and tells the user to save it on the dashboard so subsequent runs
+ * take the update path.
+ *
+ * Deliberately does NOT create `add_widget_preview` — every real example
+ * inspected uses an uploaded `application_asset` for it, and we don't have a
+ * confirmed asset-upload endpoint.
+ *
+ * `surfaces`/`displayName` are passed in as values (not built inline) via
+ * plain string concatenation, not template-literal interpolation, so
+ * arbitrary label text containing backticks or `${...}` can never break the
+ * generated script.
+ */
+export function buildCreateWidgetConfigSnippet(
+  applicationId: string,
+  displayName: string,
+  surfaces: unknown,
+  existingConfigId: string | null,
+): string {
+  return (
+    "// Paste into the devtools console on discord.com, logged into the account\n" +
+    "// that owns this application.\n" +
+    "(async () => {\n" +
+    '  var APP_ID = "' +
+    applicationId +
+    '";\n' +
+    "  var DISPLAY_NAME = " +
+    JSON.stringify(displayName) +
+    ";\n" +
+    "  var SURFACES = " +
+    JSON.stringify(surfaces) +
+    ";\n" +
+    "  var EXISTING_CONFIG_ID = " +
+    JSON.stringify(existingConfigId) +
+    ";\n" +
+    `
+  var token;
+  window.webpackChunkdiscord_app.push([[Symbol()], {}, function (r) {
+    var mods = Object.values(r.c);
+    for (var i = 0; i < mods.length; i++) {
+      var m = mods[i];
+      try {
+        if (!m.exports || m.exports === window) continue;
+        for (var k in m.exports) {
+          var ex = m.exports[k];
+          if (!ex || ex[Symbol.toStringTag] === "IntlMessagesProxy") continue;
+          if (!token && ex.getToken) token = ex.getToken();
+        }
+        if (token) break;
+      } catch (e) {}
+    }
+  }]);
+  window.webpackChunkdiscord_app.pop();
+  if (!token) return console.error("[Widget] Could not read token — are you logged in on discord.com?");
+
+  var headers = { Authorization: token, "Content-Type": "application/json" };
+  var configId = EXISTING_CONFIG_ID;
+
+  if (configId) {
+    var updateRes = await fetch("/api/v9/applications/" + APP_ID + "/widget-configs/" + configId, {
+      method: "PATCH",
+      headers: headers,
+      body: JSON.stringify({ display_name: DISPLAY_NAME, surfaces: SURFACES }),
+    });
+    var updateBody = await updateRes.json().catch(function () { return null; });
+    if (!updateRes.ok) {
+      console.error("[Widget] Failed to update widget config " + configId + ": " + updateRes.status + " —", updateBody);
+      return;
+    }
+    console.log("[Widget] Updated widget_config " + configId + ", publishing...");
+  } else {
+    var createRes = await fetch("/api/v9/applications/" + APP_ID + "/widget-configs", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({ display_name: DISPLAY_NAME, surfaces: SURFACES }),
+    });
+    var createBody = await createRes.json().catch(function () { return null; });
+    if (!createRes.ok) {
+      console.error("[Widget] Failed to create widget config: " + createRes.status + " —", createBody);
+      return;
+    }
+    configId = createBody.config_id;
+    console.log("[Widget] Created widget_config " + configId + " — SAVE THIS ID on the dashboard's widget layout panel so future runs update it instead of creating a new one. Publishing...");
+  }
+
+  var pubRes = await fetch("/api/v9/applications/" + APP_ID + "/widget-configs/" + configId + "/publish", {
+    method: "POST",
+    headers: headers,
+  });
+  var pubBody = await pubRes.json().catch(function () { return null; });
+  if (!pubRes.ok) {
+    console.error("[Widget] Saved (config_id=" + configId + ") but failed to publish: " + pubRes.status + " —", pubBody);
+    return;
+  }
+  console.log("[Widget] Published! config_id=" + configId + ". Now run the attach script below to put it on your profile.");
+})();`
+  );
+}

@@ -67,12 +67,21 @@ Each person does this once on their own Discord account.
    Discord account on your behalf. Never share it or commit it anywhere.
 4. Note the **Application ID** from the General Information page.
 
-### B2. Design your widget layout
+### B2. Create your widget layout
 
 The widget's visual layout (which fields exist, their type, static vs. dynamic)
-is defined by a `widget_config`, created through a hidden editor in the
-Developer Portal UI. Unlock it by pasting the following into your browser's
-devtools console while on the Developer Portal:
+is defined by a `widget_config`. On your dashboard, under **"Set up your widget
+layout"**, there's a generated script that creates and publishes one
+automatically from the site's shared field map (`/admin`) — paste it into
+devtools on discord.com, run it once, done. It covers the main widget content
+(top section, bottom stats, mini profile, activity accessory); the "add
+widget" preview icon isn't included, since that specifically requires an
+uploaded image asset we haven't automated (a different, unconfirmed API).
+
+If you want to add that preview icon, or customize the layout beyond what the
+site's field map produces, use the hidden manual editor instead. Unlock it by
+pasting the following into your browser's devtools console while on the
+Developer Portal:
 
 ```js
 let _mods = webpackChunkdiscord_developers.push([[Symbol()], {}, (r) => r.c]);
@@ -108,11 +117,10 @@ the API). Use dynamic fields for anything you want this app to be able to
 update. **Note the exact field names you chose** — if they're not already in the
 site's shared field map (`/admin`, Part A3), ask the site admin to add them.
 
-Publish the layout. We don't currently automate this step — the create/publish
-API for widget-configs is undocumented and we don't have a confirmed request
-shape for it, unlike the attach/push endpoints below (which we verified by
-testing). Guessing at it risks producing a broken config for what's otherwise a
-five-minute one-time step with a working manual path.
+Publish the layout when you're done. If you used the manual editor instead of
+the generated script above, make sure your field names match the site's shared
+field map (`/admin`) — the automated script's field names always match by
+construction, since it's generated *from* that map.
 
 ### B3. Enter your app into the dashboard
 

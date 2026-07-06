@@ -2,8 +2,11 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buildLinkConsoleSnippet } from "@/lib/discord/consoleSnippet";
+import { buildLinkConsoleSnippet, buildCreateWidgetConfigSnippet } from "@/lib/discord/consoleSnippet";
+import { buildWidgetConfigSurfaces, defaultLayoutMapping } from "@/lib/discord/widgetConfigBuilder";
 import { DiscordAppPanel } from "@/app/dashboard/DiscordAppPanel";
+import { WidgetLayoutEditor } from "@/app/dashboard/WidgetLayoutEditor";
+import { WidgetConfigPanel } from "@/app/dashboard/WidgetConfigPanel";
 import { LinkPanel } from "@/app/dashboard/LinkPanel";
 import { FieldsTable } from "@/app/dashboard/FieldsTable";
 import { SourcesPanel } from "@/app/dashboard/SourcesPanel";
@@ -17,7 +20,13 @@ export default async function DashboardPage() {
   const [user, link, fieldValues, fieldMap, sources, settings] = await Promise.all([
     prisma.user.findUniqueOrThrow({
       where: { id: userId },
-      select: { discordId: true, discordAppId: true, discordBotTokenEnc: true },
+      select: {
+        discordId: true,
+        discordAppId: true,
+        discordBotTokenEnc: true,
+        widgetLayoutJson: true,
+        discordWidgetConfigId: true,
+      },
     }),
     prisma.widgetLink.findUnique({ where: { userId } }),
     prisma.widgetFieldValue.findMany({ where: { userId } }),
@@ -32,6 +41,19 @@ export default async function DashboardPage() {
 
   const consoleSnippet = user.discordAppId
     ? buildLinkConsoleSnippet(user.discordAppId, user.discordId)
+    : null;
+
+  const layoutMapping = user.widgetLayoutJson
+    ? JSON.parse(user.widgetLayoutJson)
+    : defaultLayoutMapping(fieldMap);
+
+  const createConfigSnippet = user.discordAppId
+    ? buildCreateWidgetConfigSnippet(
+        user.discordAppId,
+        "My Widget",
+        buildWidgetConfigSurfaces(layoutMapping, fieldMap),
+        user.discordWidgetConfigId,
+      )
     : null;
 
   return (
@@ -56,6 +78,15 @@ export default async function DashboardPage() {
         discordAppId={user.discordAppId}
         hasBotToken={Boolean(user.discordBotTokenEnc)}
       />
+
+      <WidgetLayoutEditor
+        fieldMap={fieldMap.map((f) => ({ fieldName: f.fieldName, label: f.label, fieldType: f.fieldType }))}
+        initialMapping={layoutMapping}
+      />
+
+      {createConfigSnippet && (
+        <WidgetConfigPanel script={createConfigSnippet} discordWidgetConfigId={user.discordWidgetConfigId} />
+      )}
 
       <LinkPanel
         published={link?.published ?? false}

@@ -26,6 +26,9 @@ export const config = {
     "/api/widget/push-test",
     "/api/widget/debug-scopes",
     "/api/widget/discord-app",
+    "/api/widget/layout",
+    "/api/widget/config-id",
+    "/api/widget/publish-layout",
     "/api/sources/:path*",
   ],
 };
