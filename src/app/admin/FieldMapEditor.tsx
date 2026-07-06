@@ -150,20 +150,23 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
   async function moveField(index: number, direction: -1 | 1) {
     const other = index + direction;
     if (other < 0 || other >= fields.length) return;
+    // Rewrites every row's sortOrder to its new sequential index, rather than
+    // swapping the two rows' existing values — fields added before this
+    // reordering UI existed may all share sortOrder 0, and swapping two equal
+    // values is a silent no-op.
+    const reordered = [...fields];
+    [reordered[index], reordered[other]] = [reordered[other], reordered[index]];
     setIsPending(true);
     try {
-      await Promise.all([
-        fetch(`/api/admin/field-map/${fields[index].id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sortOrder: fields[other].sortOrder }),
-        }),
-        fetch(`/api/admin/field-map/${fields[other].id}`, {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sortOrder: fields[index].sortOrder }),
-        }),
-      ]);
+      await Promise.all(
+        reordered.map((f, i) =>
+          fetch(`/api/admin/field-map/${f.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sortOrder: i }),
+          }),
+        ),
+      );
       router.refresh();
     } finally {
       setIsPending(false);

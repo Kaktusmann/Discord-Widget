@@ -189,7 +189,7 @@ export function WidgetLayoutEditor({
                 value={stat.label}
                 onChange={(e) => updateStat(i, { label: e.target.value })}
                 placeholder="Label"
-                className="w-24 shrink-0 rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
+                className="w-30 shrink-0 rounded border border-zinc-300 bg-transparent px-2 py-1 text-xs dark:border-zinc-700"
               />
               <SlotEditor
                 binding={stat.value}
