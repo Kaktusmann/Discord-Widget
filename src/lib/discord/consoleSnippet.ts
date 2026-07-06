@@ -29,7 +29,7 @@ export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUs
 
   var token, uid;
   window.webpackChunkdiscord_app.push([[Symbol()], {}, function (r) {
-    var mods = Object.values(r.c);
+    var mods = Object.values((r && r.c) || {});
     for (var i = 0; i < mods.length; i++) {
       var m = mods[i];
       try {
@@ -193,7 +193,7 @@ export function buildCreateWidgetConfigSnippet(
     `
   var token;
   window.webpackChunkdiscord_app.push([[Symbol()], {}, function (r) {
-    var mods = Object.values(r.c);
+    var mods = Object.values((r && r.c) || {});
     for (var i = 0; i < mods.length; i++) {
       var m = mods[i];
       try {
