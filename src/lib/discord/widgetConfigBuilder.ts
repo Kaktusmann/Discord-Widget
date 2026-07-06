@@ -17,13 +17,14 @@
  * `add_widget_preview` IS generated (unlike earlier versions of this file) —
  * Discord's create/update endpoint rejects the request outright with
  * WIDGET_CONFIG_SURFACES_REQUIRED if it's missing, confirmed via a real 400
- * from a live publish attempt. We still don't have a confirmed asset-upload
- * endpoint, so its icon is left unset (banking on the same "falls back to the
- * app's own icon" behavior documented for mini_profile) and title/description
- * use custom_string text only. This is an unconfirmed guess at the component
- * shape — if Discord's next error names different required fields, fix it
- * here based on that real error, the same way every other surface here was
- * derived.
+ * from a live publish attempt. Its layout, `add_widget_preview_hero`, is a
+ * confirmed real enum value (docs.discord.food's layout-definitions list),
+ * mirroring widget_top_hero — but the exact component/field names expected
+ * inside it (here guessed as title/description, custom_string only, no
+ * uploaded application_asset since we have no confirmed upload endpoint) are
+ * still unconfirmed. If Discord's next error names different required
+ * component keys, fix it here based on that real error, the same way every
+ * other surface here was derived.
  */
 
 export interface FieldMapEntry {
@@ -195,7 +196,7 @@ export function buildWidgetConfigSurfaces(
   }
 
   surfaces.add_widget_preview = {
-    layout: "add_widget_preview_default",
+    layout: "add_widget_preview_hero",
     components: {
       title: { fields: { text: labelField(displayName) } },
       description: {

@@ -82,7 +82,6 @@ export default async function DashboardPage() {
 
       <WidgetLayoutEditor
         fieldMap={fieldMap.map((f) => ({ fieldName: f.fieldName, label: f.label, fieldType: f.fieldType }))}
-        fieldValues={fieldValues.map((f) => ({ fieldName: f.fieldName, value: f.value }))}
         initialMapping={layoutMapping}
       />
 
