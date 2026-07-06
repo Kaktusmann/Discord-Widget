@@ -50,6 +50,16 @@ export function resolveTemplate(data: unknown, template: string): string {
  * Returns undefined if the value doesn't match the field's configured type at
  * all (e.g. a jsonPath pointing at a number for a string field).
  */
+// Discord rejects any dynamic field string value over 100 chars outright
+// (BASE_TYPE_MAX_LENGTH), confirmed via a real push of AniList's
+// `last_activity` text (a full episode/chapter title easily exceeds this).
+const DISCORD_STRING_VALUE_MAX_LENGTH = 100;
+
+function truncateForDiscord(value: string): string {
+  if (value.length <= DISCORD_STRING_VALUE_MAX_LENGTH) return value;
+  return value.slice(0, DISCORD_STRING_VALUE_MAX_LENGTH - 1) + "…";
+}
+
 export function coerceResolvedValue(
   resolved: unknown,
   fieldType: number,
@@ -57,7 +67,7 @@ export function coerceResolvedValue(
   if (resolved === undefined || resolved === null) return undefined;
 
   if (fieldType === 1) {
-    if (typeof resolved === "string") return resolved;
+    if (typeof resolved === "string") return truncateForDiscord(resolved);
     // Many JSON APIs return numbers for what a widget_config still declares
     // as a string field (e.g. AniList's `total_anime: 552` vs. a widget field
     // sample-valued as "552") — auto-stringify rather than reject, since the
