@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { env } from "@/lib/env";
 import { buildLinkConsoleSnippet, buildCreateWidgetConfigSnippet } from "@/lib/discord/consoleSnippet";
 import { buildWidgetConfigSurfaces, normalizeLayoutMapping } from "@/lib/discord/widgetConfigBuilder";
 import { DiscordAppPanel } from "@/app/dashboard/DiscordAppPanel";
@@ -11,10 +12,15 @@ import { LinkPanel } from "@/app/dashboard/LinkPanel";
 import { FieldsTable } from "@/app/dashboard/FieldsTable";
 import { SourcesPanel } from "@/app/dashboard/SourcesPanel";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ identity?: string; reason?: string }>;
+}) {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/signin");
 
+  const { identity, reason } = await searchParams;
   const userId = session.user.id;
 
   const [user, link, fieldValues, fieldMap, sources, settings] = await Promise.all([
@@ -24,6 +30,8 @@ export default async function DashboardPage() {
         discordId: true,
         discordAppId: true,
         discordBotTokenEnc: true,
+        discordClientSecretEnc: true,
+        discordIdentityAuthorizedAt: true,
         widgetLayoutJson: true,
         discordWidgetConfigId: true,
       },
@@ -75,9 +83,24 @@ export default async function DashboardPage() {
         )}
       </div>
 
+      {identity === "ok" && (
+        <p className="rounded-lg border border-green-300 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950 dark:text-green-400">
+          Identity authorized — pushed data can now show on your profile.
+        </p>
+      )}
+      {identity === "error" && (
+        <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm text-red-700 dark:border-red-800 dark:bg-red-950 dark:text-red-400">
+          Authorization failed ({reason ?? "unknown error"}) — check your app ID/bot token/client
+          secret and the redirect URI, then try again.
+        </p>
+      )}
+
       <DiscordAppPanel
         discordAppId={user.discordAppId}
         hasBotToken={Boolean(user.discordBotTokenEnc)}
+        hasClientSecret={Boolean(user.discordClientSecretEnc)}
+        identityAuthorizedAt={user.discordIdentityAuthorizedAt?.toISOString() ?? null}
+        oauthCallbackUrl={`${env.NEXTAUTH_URL}/api/widget/oauth-callback`}
       />
 
       <WidgetLayoutEditor

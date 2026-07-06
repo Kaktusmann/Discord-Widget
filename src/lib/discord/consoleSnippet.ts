@@ -14,11 +14,15 @@
  * different Discord account than the one that generated this script, it
  * refuses rather than silently attaching the widget to the wrong profile.
  *
- * Before attaching, this also authorizes `sdk.social_layer_presence` for the
- * user's own app — required, not optional: without it, profilePush.ts's
- * bot-token PATCH is accepted by Discord with no error but the data never
- * actually shows on the profile, since this authorize step is what
- * registers the app<->account identity link the pushed data attaches to.
+ * This does NOT handle sdk.social_layer_presence authorization — an earlier
+ * version tried faking that via a browser-console POST to
+ * /api/v9/oauth2/authorize, which 400s (Invalid Form Body) and turned out to
+ * be the wrong mechanism entirely. The real flow is a proper OAuth2
+ * Authorization Code exchange against the user's own app (see
+ * /api/widget/oauth-authorize + /api/widget/oauth-callback, surfaced as the
+ * "Authorize" button in DiscordAppPanel.tsx) — confirmed by
+ * discordwidgets.com's own setup, which likewise asks for a redirect URI and
+ * a client secret rather than doing anything client-side.
  */
 export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUserId: string): string {
   return `// Paste into the devtools console on discord.com, then refresh your profile.
@@ -54,24 +58,6 @@ export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUs
   }
 
   var headers = { Authorization: token, "Content-Type": "application/json" };
-
-  // Required — without authorizing THIS app for sdk.social_layer_presence,
-  // the bot-token profile push (profilePush.ts) is accepted by Discord with
-  // no error but never actually shows on the profile: this authorize step is
-  // what registers the app<->account identity link the push data attaches
-  // to. Confirmed via a real working reference script (not guessed).
-  var authRes = await fetch("/api/v9/oauth2/authorize", {
-    method: "POST",
-    headers: headers,
-    body: JSON.stringify({ client_id: APP_ID, scope: "sdk.social_layer_presence", permissions: "0", authorize: true }),
-  });
-  if (!authRes.ok) {
-    var authBody = null;
-    try { authBody = await authRes.json(); } catch (e) {}
-    console.error("[Widget] Failed to authorize sdk.social_layer_presence: " + authRes.status + " —", authBody && authBody.message || authBody);
-    console.error("[Widget] Stopping here — without this, pushed data won't show even if the widget attaches below.");
-    return;
-  }
 
   var ours = { data: { type: "application", application_id: APP_ID } };
   function put(list, extra) {

@@ -23,8 +23,16 @@ model User {
   // Each user's OWN Discord Application (their own bot) — attaching a widget
   // to a profile only works for that application's owner, so a single shared
   // app can't serve multiple users. See SETUP.md.
-  discordAppId       String?
-  discordBotTokenEnc String?
+  discordAppId          String?
+  discordBotTokenEnc    String?
+  // Needed to complete the real OAuth2 Authorization Code exchange for
+  // sdk.social_layer_presence (see /api/widget/oauth-callback) — this is
+  // what actually registers the app<->account identity link that pushed
+  // profile data attaches to. Confirmed as the real mechanism (not a client-
+  // side console hack) by discordwidgets.com's own setup flow, which asks
+  // for this same secret for the same reason.
+  discordClientSecretEnc     String?
+  discordIdentityAuthorizedAt DateTime?
   // The widget_config created by the "Set up your widget layout" script.
   // Once known, that script switches from POST (create) to PATCH (update the
   // same config in place) — same mechanism discordwidgets.com uses to let

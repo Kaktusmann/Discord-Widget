@@ -65,7 +65,11 @@ Each person does this once on their own Discord account.
 3. Under **Bot**, generate a bot token.
    **This token is extremely sensitive** — it can push profile data to your
    Discord account on your behalf. Never share it or commit it anywhere.
-4. Note the **Application ID** from the General Information page.
+4. Under **OAuth2**, note the **Client Secret** (also sensitive — required for
+   step B3b below, which is what actually makes pushed data show up on your
+   profile). Add a redirect URI here too — the dashboard shows you the exact
+   URL to paste in once you've entered your app's details (step B3).
+5. Note the **Application ID** from the General Information page.
 
 ### B2. Create your widget layout
 
@@ -125,10 +129,26 @@ construction, since it's generated *from* that map.
 ### B3. Enter your app into the dashboard
 
 Sign into the site, and on `/dashboard` under **"Your Discord application"**,
-enter your Application ID and bot token from step B1. This is stored encrypted
-and used server-side to push your field values to Discord (via
-`PATCH .../identities/{id}/profile`, which — unlike attaching — does work with a
-bot token, no browser session needed).
+enter your Application ID, bot token, and client secret from step B1. All
+three are stored encrypted and used server-side — the bot token to push your
+field values to Discord (via `PATCH .../identities/{id}/profile`, which —
+unlike attaching — does work with a bot token, no browser session needed),
+the client secret only for step B3b below.
+
+### B3b. Authorize your app for your account
+
+This step is easy to skip and easy to miss the consequences of: without it,
+pushed data is accepted by Discord with no error, but never actually shows on
+your profile. It's a real OAuth2 consent screen, not a script — copy the
+redirect URL shown under "Authorize your app for this account" into your
+app's OAuth2 redirect settings (Developer Portal), then click **Authorize**
+on the dashboard and approve. The dashboard shows whether this has succeeded.
+
+An earlier version of this app tried faking this via a browser-console
+request instead of a real OAuth flow — that approach 400s and turned out to
+be the wrong mechanism; this is the confirmed-correct one (matching how
+discordwidgets.com does it, which is also why it asks for the same redirect
+URL and client secret).
 
 ### B4. Attach the widget to your profile
 

@@ -29,6 +29,8 @@ export const config = {
     "/api/widget/layout",
     "/api/widget/config-id",
     "/api/widget/publish-layout",
+    "/api/widget/oauth-authorize",
+    "/api/widget/oauth-callback",
     "/api/sources/:path*",
   ],
 };

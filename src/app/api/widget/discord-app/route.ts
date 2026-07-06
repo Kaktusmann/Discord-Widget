@@ -8,6 +8,7 @@ import { encrypt } from "@/lib/crypto";
 const updateSchema = z.object({
   discordAppId: z.string().min(1),
   discordBotToken: z.string().min(1),
+  discordClientSecret: z.string().min(1),
 });
 
 export async function GET() {
@@ -16,12 +17,19 @@ export async function GET() {
 
   const user = await prisma.user.findUniqueOrThrow({
     where: { id: session.user.id },
-    select: { discordAppId: true, discordBotTokenEnc: true },
+    select: {
+      discordAppId: true,
+      discordBotTokenEnc: true,
+      discordClientSecretEnc: true,
+      discordIdentityAuthorizedAt: true,
+    },
   });
 
   return NextResponse.json({
     discordAppId: user.discordAppId,
     hasBotToken: Boolean(user.discordBotTokenEnc),
+    hasClientSecret: Boolean(user.discordClientSecretEnc),
+    identityAuthorizedAt: user.discordIdentityAuthorizedAt,
   });
 }
 
@@ -40,6 +48,10 @@ export async function POST(req: Request) {
     data: {
       discordAppId: parsed.data.discordAppId,
       discordBotTokenEnc: encrypt(parsed.data.discordBotToken),
+      discordClientSecretEnc: encrypt(parsed.data.discordClientSecret),
+      // Changing the app's credentials invalidates any prior identity
+      // authorization — it was granted for a specific client_id/secret pair.
+      discordIdentityAuthorizedAt: null,
     },
   });
 
