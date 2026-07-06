@@ -16,15 +16,17 @@
  *
  * `add_widget_preview` IS generated (unlike earlier versions of this file) —
  * Discord's create/update endpoint rejects the request outright with
- * WIDGET_CONFIG_SURFACES_REQUIRED if it's missing, confirmed via a real 400
- * from a live publish attempt. Its layout, `add_widget_preview_hero`, is a
- * confirmed real enum value (docs.discord.food's layout-definitions list),
- * mirroring widget_top_hero — but the exact component/field names expected
- * inside it (here guessed as title/description, custom_string only, no
- * uploaded application_asset since we have no confirmed upload endpoint) are
- * still unconfirmed. If Discord's next error names different required
- * component keys, fix it here based on that real error, the same way every
- * other surface here was derived.
+ * WIDGET_CONFIG_SURFACES_REQUIRED if it's missing. Its layout,
+ * `add_widget_preview_hero`, is a confirmed real enum value
+ * (docs.discord.food's layout-definitions list). A first guess at its
+ * components (title/description custom_string) came back from a real publish
+ * attempt as `WIDGET_CONFIG_UNKNOWN_COMPONENT` for both, plus
+ * `WIDGET_CONFIG_REQUIRED_COMPONENT_MISSING` for `hero_image` — so, like
+ * widget_top_hero, this layout's real (and apparently only) component is
+ * `hero_image`, confirmed the same way every other surface here was derived.
+ * No confirmed asset-upload endpoint exists, so this only populates when the
+ * user has a dynamic (`data`) image field mapped; without one, the surface is
+ * sent empty and will presumably still fail that required-component check.
  */
 
 export interface FieldMapEntry {
@@ -147,7 +149,6 @@ export function defaultLayoutMapping(fields: FieldMapEntry[]): WidgetLayoutMappi
 export function buildWidgetConfigSurfaces(
   mapping: WidgetLayoutMapping,
   fields: FieldMapEntry[],
-  displayName: string,
 ): Record<string, unknown> {
   const byName = new Map(fields.map((f) => [f.fieldName, f]));
   const titleSlot = resolveSlot(mapping.title, byName);
@@ -197,14 +198,9 @@ export function buildWidgetConfigSurfaces(
 
   surfaces.add_widget_preview = {
     layout: "add_widget_preview_hero",
-    components: {
-      title: { fields: { text: labelField(displayName) } },
-      description: {
-        fields: {
-          text: labelField(mapping.subtitle?.mode === "static" ? mapping.subtitle.text : "Self-updating widget"),
-        },
-      },
-    },
+    components: imageField
+      ? { hero_image: { fields: { image: dataField(imageField.fieldName, imageField.fieldType) } } }
+      : {},
   };
 
   return surfaces;

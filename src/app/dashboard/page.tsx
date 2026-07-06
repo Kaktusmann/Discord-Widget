@@ -52,7 +52,7 @@ export default async function DashboardPage() {
     ? buildCreateWidgetConfigSnippet(
         user.discordAppId,
         "My Widget",
-        buildWidgetConfigSurfaces(layoutMapping, fieldMap, "My Widget"),
+        buildWidgetConfigSurfaces(layoutMapping, fieldMap),
         user.discordWidgetConfigId,
       )
     : null;

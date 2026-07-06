@@ -25,7 +25,7 @@ export async function POST() {
 
   const mapping = user.widgetLayoutJson ? JSON.parse(user.widgetLayoutJson) : defaultLayoutMapping(fieldMap);
   const displayName = "My Widget";
-  const surfaces = buildWidgetConfigSurfaces(mapping, fieldMap, displayName);
+  const surfaces = buildWidgetConfigSurfaces(mapping, fieldMap);
   const botToken = decrypt(user.discordBotTokenEnc);
 
   try {

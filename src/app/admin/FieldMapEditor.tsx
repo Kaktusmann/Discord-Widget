@@ -147,6 +147,29 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
     }
   }
 
+  async function moveField(index: number, direction: -1 | 1) {
+    const other = index + direction;
+    if (other < 0 || other >= fields.length) return;
+    setIsPending(true);
+    try {
+      await Promise.all([
+        fetch(`/api/admin/field-map/${fields[index].id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sortOrder: fields[other].sortOrder }),
+        }),
+        fetch(`/api/admin/field-map/${fields[other].id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ sortOrder: fields[index].sortOrder }),
+        }),
+      ]);
+      router.refresh();
+    } finally {
+      setIsPending(false);
+    }
+  }
+
   return (
     <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="font-medium">Field map</h2>
@@ -168,7 +191,7 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
           </tr>
         </thead>
         <tbody>
-          {fields.map((f) =>
+          {fields.map((f, i) =>
             editingId === f.id ? (
               <EditableRow
                 key={f.id}
@@ -185,9 +208,25 @@ export function FieldMapEditor({ fields }: { fields: Field[] }) {
                 <td className="py-2 font-mono text-xs text-zinc-500">{f.defaultJsonPath ?? "—"}</td>
                 <td className="py-2 text-right whitespace-nowrap">
                   <button
+                    disabled={isPending || i === 0}
+                    onClick={() => moveField(i, -1)}
+                    className="text-xs text-zinc-500 disabled:opacity-30"
+                    title="Move up"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    disabled={isPending || i === fields.length - 1}
+                    onClick={() => moveField(i, 1)}
+                    className="ml-1 text-xs text-zinc-500 disabled:opacity-30"
+                    title="Move down"
+                  >
+                    ↓
+                  </button>
+                  <button
                     disabled={isPending}
                     onClick={() => setEditingId(f.id)}
-                    className="text-xs text-zinc-500"
+                    className="ml-2 text-xs text-zinc-500"
                   >
                     Edit
                   </button>
