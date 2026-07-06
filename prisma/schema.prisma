@@ -81,6 +81,21 @@ model WidgetFieldValue {
   @@map("widget_field_values")
 }
 
+// Singleton row (id fixed to 1) for site-wide settings an admin manages once.
+model AppSettings {
+  id Int @id @default(1)
+
+  // A URL template like "https://anilist-widget.rinkerbel.deno.net/user/{username}"
+  // — the dashboard's "Add source" box shows a plain username input instead
+  // of a raw URL when this is set, substituting it into "{username}". Users
+  // can still switch to entering a raw URL directly ("advanced mode").
+  defaultSourceUrlTemplate String?
+
+  updatedAt DateTime @updatedAt
+
+  @@map("app_settings")
+}
+
 model AdminFieldMap {
   id              String   @id @default(cuid())
   fieldName       String   @unique

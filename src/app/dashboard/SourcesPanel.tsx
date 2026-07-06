@@ -222,14 +222,23 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
 export function SourcesPanel({
   fieldMap,
   sources,
+  defaultSourceUrlTemplate,
 }: {
   fieldMap: FieldOption[];
   sources: SourceEntry[];
+  defaultSourceUrlTemplate: string | null;
 }) {
   const router = useRouter();
   const [isPending, setIsPending] = useState(false);
   const [newUrl, setNewUrl] = useState("");
+  const [username, setUsername] = useState("");
+  const [advanced, setAdvanced] = useState(!defaultSourceUrlTemplate);
   const [error, setError] = useState<string | null>(null);
+
+  const resolvedUrl =
+    !advanced && defaultSourceUrlTemplate
+      ? defaultSourceUrlTemplate.replace("{username}", encodeURIComponent(username))
+      : newUrl;
 
   async function addSource() {
     setError(null);
@@ -238,7 +247,7 @@ export function SourcesPanel({
       const res = await fetch("/api/sources", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url: newUrl }),
+        body: JSON.stringify({ url: resolvedUrl }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -246,6 +255,7 @@ export function SourcesPanel({
         return;
       }
       setNewUrl("");
+      setUsername("");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -263,21 +273,58 @@ export function SourcesPanel({
         <strong>Map all</strong>. For anything else, use the manual path/template box.
       </p>
 
-      <div className="mt-3 flex gap-2">
-        <input
-          value={newUrl}
-          onChange={(e) => setNewUrl(e.target.value)}
-          placeholder="https://example.com/api/status"
-          className="flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-700"
-        />
-        <button
-          disabled={isPending || !newUrl}
-          onClick={addSource}
-          className="rounded border border-zinc-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-zinc-700"
-        >
-          Add
-        </button>
-      </div>
+      {defaultSourceUrlTemplate && !advanced ? (
+        <>
+          <div className="mt-3 flex gap-2">
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Username"
+              className="flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-700"
+            />
+            <button
+              disabled={isPending || !username}
+              onClick={addSource}
+              className="rounded border border-zinc-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-zinc-700"
+            >
+              Add
+            </button>
+          </div>
+          {username && <p className="mt-1 text-xs text-zinc-400">{resolvedUrl}</p>}
+          <button
+            onClick={() => setAdvanced(true)}
+            className="mt-1 text-xs text-zinc-500 underline"
+          >
+            Advanced: use a custom URL instead
+          </button>
+        </>
+      ) : (
+        <>
+          <div className="mt-3 flex gap-2">
+            <input
+              value={newUrl}
+              onChange={(e) => setNewUrl(e.target.value)}
+              placeholder="https://example.com/api/status"
+              className="flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-700"
+            />
+            <button
+              disabled={isPending || !newUrl}
+              onClick={addSource}
+              className="rounded border border-zinc-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-zinc-700"
+            >
+              Add
+            </button>
+          </div>
+          {defaultSourceUrlTemplate && (
+            <button
+              onClick={() => setAdvanced(false)}
+              className="mt-1 text-xs text-zinc-500 underline"
+            >
+              Use username instead
+            </button>
+          )}
+        </>
+      )}
       {error && <p className="mt-1 text-sm text-red-500">{error}</p>}
 
       <ul className="mt-3 flex flex-col gap-2">

@@ -4,15 +4,17 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { discordConfig } from "@/lib/discord/config";
 import { FieldMapEditor } from "@/app/admin/FieldMapEditor";
+import { SettingsEditor } from "@/app/admin/SettingsEditor";
 
 export default async function AdminPage() {
   const session = await getServerSession(authOptions);
   if (!session) redirect("/signin");
   if (!session.user.isAdmin) redirect("/dashboard");
 
-  const [fields, users] = await Promise.all([
+  const [fields, users, settings] = await Promise.all([
     prisma.adminFieldMap.findMany({ orderBy: { sortOrder: "asc" } }),
     prisma.user.findMany({ include: { widgetLink: true }, orderBy: { createdAt: "asc" } }),
+    prisma.appSettings.findUnique({ where: { id: 1 } }),
   ]);
 
   return (
@@ -70,6 +72,8 @@ export default async function AdminPage() {
           </tbody>
         </table>
       </section>
+
+      <SettingsEditor defaultSourceUrlTemplate={settings?.defaultSourceUrlTemplate ?? null} />
 
       <FieldMapEditor
         fields={fields.map((f) => ({

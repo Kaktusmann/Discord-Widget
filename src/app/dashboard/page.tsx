@@ -12,7 +12,7 @@ export default async function DashboardPage() {
 
   const userId = session.user.id;
 
-  const [link, fieldValues, fieldMap, sources] = await Promise.all([
+  const [link, fieldValues, fieldMap, sources, settings] = await Promise.all([
     prisma.widgetLink.findUnique({ where: { userId } }),
     prisma.widgetFieldValue.findMany({ where: { userId } }),
     prisma.adminFieldMap.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -21,6 +21,7 @@ export default async function DashboardPage() {
       include: { fieldValues: { select: { fieldName: true, jsonPath: true } } },
       orderBy: { createdAt: "asc" },
     }),
+    prisma.appSettings.findUnique({ where: { id: 1 } }),
   ]);
 
   return (
@@ -71,6 +72,7 @@ export default async function DashboardPage() {
           lastError: s.lastError,
           fields: s.fieldValues,
         }))}
+        defaultSourceUrlTemplate={settings?.defaultSourceUrlTemplate ?? null}
       />
     </div>
   );
