@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { decrypt } from "@/lib/crypto";
 import {
   computePayloadHash,
   pushProfileData,
@@ -28,7 +29,7 @@ export async function buildPayloadForUser(userId: string): Promise<ProfilePushPa
 
 export type SyncResult =
   | { pushed: true; reason: "sent" }
-  | { pushed: false; reason: "deduped" | "not_linked" };
+  | { pushed: false; reason: "deduped" | "not_linked" | "not_configured" };
 
 /** Recomputes a user's full widget payload from stored field values and pushes it to Discord if it changed since the last successful push. Shared by the manual push API and the URL-source poller. */
 export async function syncUserWidget(userId: string): Promise<SyncResult> {
@@ -41,6 +42,10 @@ export async function syncUserWidget(userId: string): Promise<SyncResult> {
     return { pushed: false, reason: "not_linked" };
   }
 
+  if (!user.discordAppId || !user.discordBotTokenEnc) {
+    return { pushed: false, reason: "not_configured" };
+  }
+
   const payload = await buildPayloadForUser(userId);
   const hash = computePayloadHash(payload);
 
@@ -49,7 +54,8 @@ export async function syncUserWidget(userId: string): Promise<SyncResult> {
   }
 
   try {
-    await pushProfileData(user.discordId, payload);
+    const botToken = decrypt(user.discordBotTokenEnc);
+    await pushProfileData(user.discordAppId, botToken, user.discordId, payload);
     await prisma.widgetLink.update({
       where: { userId },
       data: { lastPushedHash: hash, lastPushedAt: new Date(), lastError: null },

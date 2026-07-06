@@ -1,11 +1,13 @@
 /**
  * Generates the browser-console script that actually attaches the widget to
- * a Discord profile. This is NOT something our server can do — the
- * `PUT /users/@me/widgets` call only works with the live discord.com session
- * token pulled from the page's own webpack internals, not a portable OAuth
- * Bearer token, which is why lib/discord/oauth.ts's attach/detach functions
- * (server-side, using an OAuth token) never worked. The user must paste this
- * into their own browser console once, logged into discord.com.
+ * a Discord profile. This is NOT something our server can do — attaching a
+ * widget (`PUT /users/@me/widgets`) only works with the live discord.com
+ * session token pulled from the page's own webpack internals, not a portable
+ * OAuth Bearer token (confirmed — a server-side attempt using an OAuth token
+ * consistently 401s/400s no matter the payload shape tried). The user must
+ * paste this into their own browser console once, logged into discord.com,
+ * on the account that owns `applicationId`'s Discord Application (attaching
+ * only works for that application's owner — see User.discordAppId).
  *
  * expectedDiscordUserId (the dashboard session's own Discord snowflake) is
  * baked in purely as a safety check: if the browser is logged into a
@@ -46,6 +48,24 @@ export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUs
   }
 
   var headers = { Authorization: token, "Content-Type": "application/json" };
+
+  // Best-effort: make sure sdk.social_layer is authorized for THIS app (not
+  // just the app you used to log into the dashboard). Unverified whether
+  // this is actually required for a freshly created app — not fatal if it
+  // fails, the attach step below is attempted regardless.
+  try {
+    var authRes = await fetch("/api/v9/oauth2/authorize", {
+      method: "POST",
+      headers: headers,
+      body: JSON.stringify({ client_id: APP_ID, scope: "sdk.social_layer", permissions: "0", authorize: true }),
+    });
+    if (!authRes.ok) {
+      console.warn("[Widget] sdk.social_layer authorization check returned " + authRes.status + " — continuing anyway, this step may not be required.");
+    }
+  } catch (e) {
+    console.warn("[Widget] sdk.social_layer authorization check failed, continuing anyway:", e);
+  }
+
   var ours = { data: { type: "application", application_id: APP_ID } };
   function put(list, extra) {
     return fetch("/api/v9/users/@me/widgets", {

@@ -2,11 +2,14 @@
 
 A small, self-hosted manager for Discord's experimental "Profile Widgets v2"
 feature — link your Discord account, then keep the widget on your profile
-up to date either by pushing values from your own scripts/cron jobs, or by
-pointing a field at your own JSON API and letting the server poll it.
+up to date automatically by pointing a field at your own JSON API and letting
+the server poll it.
 
-Before doing anything else, read **[SETUP.md](./SETUP.md)** — it walks through
-the one-time manual Discord Developer Portal setup this app depends on.
+**Each person who wants a widget needs their own Discord Application** —
+attaching/pushing a widget only works for that application's owner, so a
+single shared app can't serve multiple people. Before doing anything else,
+read **[SETUP.md](./SETUP.md)**, which covers both the one-time site setup and
+the per-person setup everyone (including you) does once.
 
 ## Local development
 
@@ -32,15 +35,19 @@ Sign in with Discord, then (as an admin, per `ADMIN_DISCORD_IDS`) visit
   Widgets v2" API is undocumented and experimental, so isolating it keeps a
   future correction to a small, contained patch. See the risks section of
   the project plan / `SETUP.md` for what's unverified.
-- Attaching the widget to a Discord profile (`PUT /users/@me/widgets`) turned
-  out to only work with discord.com's own live browser session token — there
-  is no server-side/portable-OAuth way to do it. `src/lib/discord/oauth.ts`'s
-  `attachWidgetToProfile`/`detachWidgetFromProfile` are unused for this
-  reason. Instead, `src/lib/discord/consoleSnippet.ts` generates a per-user
-  browser-console script (surfaced on the dashboard's Link panel) that the
-  user runs once, logged into discord.com, to actually attach it. Only
+- Attaching the widget to a Discord profile (`PUT /users/@me/widgets`) only
+  works with discord.com's own live browser session token, and only for the
+  account that owns the Discord Application the widget belongs to — there is
+  no server-side/portable-OAuth way to do it, confirmed by testing (a
+  server-side attempt with an OAuth token consistently 401s/400s regardless of
+  payload shape). Because of the "owner only" part, **each user has their own
+  Discord Application** (`User.discordAppId` / `discordBotTokenEnc`, entered
+  on their dashboard) — one shared app cannot serve multiple people.
+  `src/lib/discord/consoleSnippet.ts` generates a per-user browser-console
+  script (surfaced on the dashboard's Link panel) that the user runs once,
+  logged into discord.com, to actually attach it. Only
   `PATCH .../identities/{id}/profile` (pushing the field data itself) works
-  server-side, via the bot token.
+  server-side, via that user's own bot token.
 - `src/lib/urlSourcePoller.ts` runs an in-process interval (started once via
   `src/instrumentation.ts`) that polls user-configured JSON URLs and pushes
   changed field values through the shared dedupe/rate-limit pipeline
@@ -87,10 +94,10 @@ local `docker compose up --build` still builds from source. Don't copy
    - **Web editor**: paste the contents of `docker-compose.yml` directly.
 2. In the **Environment variables** section, add every variable from
    `.env.example` (`NEXTAUTH_URL`, `NEXTAUTH_SECRET`, `DISCORD_CLIENT_ID`,
-   `DISCORD_CLIENT_SECRET`, `DISCORD_BOT_TOKEN`, `DISCORD_APPLICATION_ID`,
-   `DISCORD_WIDGET_CONFIG_ID`, `ADMIN_DISCORD_IDS`, `ENCRYPTION_KEY`) with
-   real values — Portainer also accepts pasting them in `.env` format via the
-   "advanced" editor instead of adding one by one.
+   `DISCORD_CLIENT_SECRET`, `ADMIN_DISCORD_IDS`, `ENCRYPTION_KEY`) with real
+   values — Portainer also accepts pasting them in `.env` format via the
+   "advanced" editor instead of adding one by one. Per-user Discord app
+   credentials are entered on each person's dashboard, not here.
 3. **Deploy the stack.** Since the image is public on Docker Hub, no registry
    credentials are needed — Portainer pulls
    `kaktusmann/discord-widget-manager:latest` directly.

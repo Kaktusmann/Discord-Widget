@@ -20,8 +20,13 @@ model User {
   accessTokenEnc  String?
   refreshTokenEnc String?
   tokenExpiresAt  DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  // Each user's OWN Discord Application (their own bot) — attaching a widget
+  // to a profile only works for that application's owner, so a single shared
+  // app can't serve multiple users. See SETUP.md.
+  discordAppId       String?
+  discordBotTokenEnc String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
   widgetLink  WidgetLink?
   fieldValues WidgetFieldValue[]
@@ -34,7 +39,11 @@ model WidgetLink {
   id             String    @id @default(cuid())
   userId         String    @unique
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  widgetConfigId String
+  // Informational only — the actual push (PATCH .../identities/{id}/profile)
+  // doesn't reference a widget_config id at all. Each user designs/owns their
+  // own widget_config on their own Discord Application; nothing here needs
+  // to read this value back.
+  widgetConfigId String?
   published      Boolean   @default(false)
   linkedAt       DateTime?
   unlinkedAt     DateTime?

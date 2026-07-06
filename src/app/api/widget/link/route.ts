@@ -3,7 +3,6 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getFreshAccessToken } from "@/lib/discord/tokenRefresh";
-import { discordConfig } from "@/lib/discord/config";
 
 export async function POST() {
   const session = await getServerSession(authOptions);
@@ -22,19 +21,8 @@ export async function POST() {
 
     const link = await prisma.widgetLink.upsert({
       where: { userId },
-      create: {
-        userId,
-        widgetConfigId: discordConfig.widgetConfigId,
-        published: true,
-        linkedAt: new Date(),
-      },
-      update: {
-        widgetConfigId: discordConfig.widgetConfigId,
-        published: true,
-        linkedAt: new Date(),
-        unlinkedAt: null,
-        lastError: null,
-      },
+      create: { userId, published: true, linkedAt: new Date() },
+      update: { published: true, linkedAt: new Date(), unlinkedAt: null, lastError: null },
     });
 
     return NextResponse.json({ ok: true, link });
@@ -42,7 +30,7 @@ export async function POST() {
     const message = err instanceof Error ? err.message : String(err);
     await prisma.widgetLink.upsert({
       where: { userId },
-      create: { userId, widgetConfigId: discordConfig.widgetConfigId, published: false, lastError: message },
+      create: { userId, published: false, lastError: message },
       update: { lastError: message },
     });
     return NextResponse.json({ error: "Failed to link widget", detail: message }, { status: 502 });

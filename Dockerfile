@@ -19,9 +19,6 @@ ENV DATABASE_URL="file:./build-placeholder.db" \
     NEXTAUTH_SECRET="build-placeholder" \
     DISCORD_CLIENT_ID="build-placeholder" \
     DISCORD_CLIENT_SECRET="build-placeholder" \
-    DISCORD_BOT_TOKEN="build-placeholder" \
-    DISCORD_APPLICATION_ID="build-placeholder" \
-    DISCORD_WIDGET_CONFIG_ID="build-placeholder" \
     ENCRYPTION_KEY="build-placeholder"
 RUN npm run build
 

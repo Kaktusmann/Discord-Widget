@@ -2,7 +2,6 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { discordConfig } from "@/lib/discord/config";
 import { FieldMapEditor } from "@/app/admin/FieldMapEditor";
 import { SettingsEditor } from "@/app/admin/SettingsEditor";
 
@@ -26,17 +25,12 @@ export default async function AdminPage() {
         </p>
       </div>
 
-      <section className="rounded-lg border border-zinc-200 p-4 text-sm dark:border-zinc-800">
-        <h2 className="font-medium">Discord application config</h2>
-        <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-zinc-600 dark:text-zinc-400">
-          <dt>Application ID</dt>
-          <dd>{discordConfig.applicationId}</dd>
-          <dt>Widget config ID</dt>
-          <dd>{discordConfig.widgetConfigId}</dd>
-        </dl>
-        <p className="mt-2 text-xs text-zinc-400">
-          Bot token and client secret are never shown here. See SETUP.md to change them.
-        </p>
+      <section className="rounded-lg border border-zinc-200 p-4 text-sm text-zinc-500 dark:border-zinc-800">
+        There&apos;s no single shared Discord application anymore — attaching a widget only works
+        for the account that owns the Discord Application it belongs to, so each user configures
+        their own on their dashboard (&quot;Your Discord application&quot;). This admin page's
+        Discord-facing config is now just the site&apos;s login OAuth client (env vars
+        `DISCORD_CLIENT_ID`/`DISCORD_CLIENT_SECRET`), unrelated to any individual widget.
       </section>
 
       <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
@@ -45,6 +39,7 @@ export default async function AdminPage() {
           <thead>
             <tr className="text-left text-zinc-500">
               <th className="pb-2 font-normal">User</th>
+              <th className="pb-2 font-normal">Own app set up</th>
               <th className="pb-2 font-normal">Linked</th>
               <th className="pb-2 font-normal">Last updated</th>
             </tr>
@@ -55,6 +50,9 @@ export default async function AdminPage() {
                 <td className="py-2">
                   {u.username}
                   {u.isAdmin && <span className="ml-1 text-xs text-zinc-400">(admin)</span>}
+                </td>
+                <td className="py-2 text-zinc-500">
+                  {u.discordAppId && u.discordBotTokenEnc ? "Yes" : "No"}
                 </td>
                 <td className="py-2 text-zinc-500">
                   {u.widgetLink?.published ? "Yes" : "No"}

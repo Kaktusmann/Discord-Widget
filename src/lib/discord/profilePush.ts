@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import { discordRequest } from "@/lib/discord/client";
-import { discordConfig } from "@/lib/discord/config";
 import { discordQueue } from "@/lib/discord/rateLimiter";
 
 export type DynamicFieldType = 1 | 2 | 3; // 1=string, 2=number, 3=image ({url})
@@ -28,7 +27,12 @@ export function computePayloadHash(payload: ProfilePushPayload): string {
  * Pushes the full dynamic-field payload to a user's Discord profile. Replaces
  * the entire array — always send the complete current field set, not a delta.
  *
- * The `identities/{id}` path segment is a `provider_issued_user_id` — this
+ * applicationId/botToken are the user's OWN Discord Application — attaching
+ * and pushing widget data only works for an application's owner, so each
+ * user has their own (see User.discordAppId/discordBotTokenEnc), not one
+ * shared app-wide config.
+ *
+ * The `identities/{id}` path segment is a `provider_issued_user_id` — the
  * application's own internal ID for the person, as in a real game/account
  * integration (confirmed by Discord's 50035
  * APPLICATION_IDENTITY_PROVIDER_USER_ID_MISMATCH error when we hardcoded the
@@ -37,6 +41,8 @@ export function computePayloadHash(payload: ProfilePushPayload): string {
  * ID — same value as {discordUserId} above it.
  */
 export async function pushProfileData(
+  applicationId: string,
+  botToken: string,
   discordUserId: string,
   payload: ProfilePushPayload,
 ): Promise<void> {
@@ -44,8 +50,8 @@ export async function pushProfileData(
     discordRequest({
       method: "PATCH",
       version: "v9",
-      path: `/applications/${discordConfig.applicationId}/users/${discordUserId}/identities/${discordUserId}/profile`,
-      token: `Bot ${discordConfig.botToken}`,
+      path: `/applications/${applicationId}/users/${discordUserId}/identities/${discordUserId}/profile`,
+      token: `Bot ${botToken}`,
       body: payload,
     }),
   );

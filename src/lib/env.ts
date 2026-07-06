@@ -6,12 +6,12 @@ const envSchema = z.object({
   NEXTAUTH_URL: z.string().url(),
   NEXTAUTH_SECRET: z.string().min(1),
 
+  // Site login only (proving who's signing in) — NOT a widget-owning
+  // application. Each user brings their own Discord Application for the
+  // widget itself, entered on their dashboard (see User.discordAppId).
   DISCORD_CLIENT_ID: z.string().min(1),
   DISCORD_CLIENT_SECRET: z.string().min(1),
   DISCORD_OAUTH_SCOPE: z.string().default("identify sdk.social_layer"),
-  DISCORD_BOT_TOKEN: z.string().min(1),
-  DISCORD_APPLICATION_ID: z.string().min(1),
-  DISCORD_WIDGET_CONFIG_ID: z.string().min(1),
 
   ADMIN_DISCORD_IDS: z
     .string()
