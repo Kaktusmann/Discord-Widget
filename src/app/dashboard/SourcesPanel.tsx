@@ -277,8 +277,7 @@ export function SourcesPanel({
       <p className="text-sm text-zinc-500">
         Enter your Anilist username below to pull your stats automatically. After <strong>Test fetch</strong>, fields whose JSON key matches a field
         name (or its admin-set default path) are auto-detected, so one click on{" "}
-        <strong>Map all</strong> maps everything at once. Need a different source entirely (not
-        Anilist)? Use <strong>Advanced</strong> to enter a raw URL instead.
+        <strong>Map all</strong> maps everything at once. Use <strong>Advanced</strong> to enter a raw URL instead.
       </p>
 
       {defaultSourceUrlTemplate && !advanced ? (

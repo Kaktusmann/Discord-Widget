@@ -32,6 +32,15 @@ Sign in with Discord, then (as an admin, per `ADMIN_DISCORD_IDS`) visit
   Widgets v2" API is undocumented and experimental, so isolating it keeps a
   future correction to a small, contained patch. See the risks section of
   the project plan / `SETUP.md` for what's unverified.
+- Attaching the widget to a Discord profile (`PUT /users/@me/widgets`) turned
+  out to only work with discord.com's own live browser session token — there
+  is no server-side/portable-OAuth way to do it. `src/lib/discord/oauth.ts`'s
+  `attachWidgetToProfile`/`detachWidgetFromProfile` are unused for this
+  reason. Instead, `src/lib/discord/consoleSnippet.ts` generates a per-user
+  browser-console script (surfaced on the dashboard's Link panel) that the
+  user runs once, logged into discord.com, to actually attach it. Only
+  `PATCH .../identities/{id}/profile` (pushing the field data itself) works
+  server-side, via the bot token.
 - `src/lib/urlSourcePoller.ts` runs an in-process interval (started once via
   `src/instrumentation.ts`) that polls user-configured JSON URLs and pushes
   changed field values through the shared dedupe/rate-limit pipeline

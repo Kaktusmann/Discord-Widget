@@ -89,7 +89,21 @@ npm start
 Sign in with Discord, then use the admin page (only visible to `ADMIN_DISCORD_IDS`)
 to map field names from step 2 to labels shown on the dashboard.
 
-## 5. Known limitation: viewer-side rendering
+## 5. Actually attaching the widget to your profile
+
+Clicking **Link** on the dashboard does *not* attach the widget — it only records
+that you've authorized the app and are ready to receive pushed data. Attaching a
+widget to a profile (`PUT /users/@me/widgets`) only works with discord.com's own
+live browser session token; there is no portable, server-side way to do it.
+
+Instead, the dashboard's Widget link panel has a **"Widget not showing up on your
+profile?"** section with a generated browser-console script, unique to your
+account. Open discord.com, open devtools (F12) → Console, paste it in, press
+Enter. Re-run it any time the widget disappears from your profile (e.g. after
+Discord invalidates it). Each user who links their account needs to run their own
+copy of this script once.
+
+## 6. Known limitation: viewer-side rendering
 
 Because Profile Widgets v2 is experimental, **people viewing your Discord profile
 may need their own client-side experiment override enabled** to actually see the

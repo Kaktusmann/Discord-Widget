@@ -2,6 +2,8 @@ import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { discordConfig } from "@/lib/discord/config";
+import { buildLinkConsoleSnippet } from "@/lib/discord/consoleSnippet";
 import { LinkPanel } from "@/app/dashboard/LinkPanel";
 import { FieldsTable } from "@/app/dashboard/FieldsTable";
 import { SourcesPanel } from "@/app/dashboard/SourcesPanel";
@@ -12,7 +14,8 @@ export default async function DashboardPage() {
 
   const userId = session.user.id;
 
-  const [link, fieldValues, fieldMap, sources, settings] = await Promise.all([
+  const [user, link, fieldValues, fieldMap, sources, settings] = await Promise.all([
+    prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { discordId: true } }),
     prisma.widgetLink.findUnique({ where: { userId } }),
     prisma.widgetFieldValue.findMany({ where: { userId } }),
     prisma.adminFieldMap.findMany({ orderBy: { sortOrder: "asc" } }),
@@ -23,6 +26,8 @@ export default async function DashboardPage() {
     }),
     prisma.appSettings.findUnique({ where: { id: 1 } }),
   ]);
+
+  const consoleSnippet = buildLinkConsoleSnippet(discordConfig.applicationId, user.discordId);
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 p-8">
@@ -46,6 +51,7 @@ export default async function DashboardPage() {
         published={link?.published ?? false}
         lastError={link?.lastError ?? null}
         lastPushedAt={link?.lastPushedAt?.toISOString() ?? null}
+        consoleSnippet={consoleSnippet}
       />
 
       <FieldsTable
