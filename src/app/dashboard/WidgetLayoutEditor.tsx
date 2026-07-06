@@ -158,7 +158,7 @@ export function WidgetLayoutEditor({
   }
 
   return (
-    <section className="max-w-xl rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="font-medium">Customize widget layout</h2>
       <p className="text-sm text-zinc-500">
         Pick fixed text or a live field for each slot. This only affects the layout script/publish below —
