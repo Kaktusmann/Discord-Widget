@@ -71,7 +71,10 @@ export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUs
     console.warn("[Widget] Save refused — checking for a stale widget entry...");
     var base = await put([ours], extra);
     if (!base.ok) {
-      console.error("[Widget] Discord refused even our own widget — reload discord.com (Ctrl+Shift+R) or re-log in, then re-run this.");
+      var baseBody = null;
+      try { baseBody = await base.json(); } catch (e) {}
+      console.error("[Widget] Discord refused even our own widget: " + base.status + " —", baseBody && baseBody.message || baseBody);
+      console.error("[Widget] If that's a stale/expired session, reload discord.com (Ctrl+Shift+R) or re-log in and re-run this. Otherwise the error above is the real cause.");
       return;
     }
     var kept = [ours];
