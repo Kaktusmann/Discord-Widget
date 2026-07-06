@@ -153,9 +153,8 @@ export function buildLinkConsoleSnippet(applicationId: string, expectedDiscordUs
  * config_id and tells the user to save it on the dashboard so subsequent runs
  * take the update path.
  *
- * Deliberately does NOT create `add_widget_preview` — every real example
- * inspected uses an uploaded `application_asset` for it, and we don't have a
- * confirmed asset-upload endpoint.
+ * Now includes a best-effort `add_widget_preview` (text-only, no uploaded
+ * asset) — see widgetConfigBuilder.ts for why it's required and unconfirmed.
  *
  * `surfaces`/`displayName` are passed in as values (not built inline) via
  * plain string concatenation, not template-literal interpolation, so

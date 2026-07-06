@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { buildLinkConsoleSnippet, buildCreateWidgetConfigSnippet } from "@/lib/discord/consoleSnippet";
-import { buildWidgetConfigSurfaces, defaultLayoutMapping } from "@/lib/discord/widgetConfigBuilder";
+import { buildWidgetConfigSurfaces, normalizeLayoutMapping } from "@/lib/discord/widgetConfigBuilder";
 import { DiscordAppPanel } from "@/app/dashboard/DiscordAppPanel";
 import { WidgetLayoutEditor } from "@/app/dashboard/WidgetLayoutEditor";
 import { WidgetConfigPanel } from "@/app/dashboard/WidgetConfigPanel";
@@ -43,15 +43,16 @@ export default async function DashboardPage() {
     ? buildLinkConsoleSnippet(user.discordAppId, user.discordId)
     : null;
 
-  const layoutMapping = user.widgetLayoutJson
-    ? JSON.parse(user.widgetLayoutJson)
-    : defaultLayoutMapping(fieldMap);
+  const layoutMapping = normalizeLayoutMapping(
+    user.widgetLayoutJson ? JSON.parse(user.widgetLayoutJson) : null,
+    fieldMap,
+  );
 
   const createConfigSnippet = user.discordAppId
     ? buildCreateWidgetConfigSnippet(
         user.discordAppId,
         "My Widget",
-        buildWidgetConfigSurfaces(layoutMapping, fieldMap),
+        buildWidgetConfigSurfaces(layoutMapping, fieldMap, "My Widget"),
         user.discordWidgetConfigId,
       )
     : null;
@@ -81,6 +82,7 @@ export default async function DashboardPage() {
 
       <WidgetLayoutEditor
         fieldMap={fieldMap.map((f) => ({ fieldName: f.fieldName, label: f.label, fieldType: f.fieldType }))}
+        fieldValues={fieldValues.map((f) => ({ fieldName: f.fieldName, value: f.value }))}
         initialMapping={layoutMapping}
       />
 

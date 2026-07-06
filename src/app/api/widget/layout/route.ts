@@ -4,12 +4,21 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
+const slotBindingSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("static"), text: z.string().min(1).max(100) }),
+  z.object({ mode: z.literal("field"), fieldName: z.string().min(1) }),
+]);
+
 const bodySchema = z.object({
-  titleField: z.string().nullable(),
-  subtitleField: z.string().nullable(),
+  title: slotBindingSchema.nullable(),
+  subtitle: slotBindingSchema.nullable(),
   imageField: z.string().nullable(),
-  stats: z.array(z.object({ fieldName: z.string().min(1), label: z.string().min(1) })).max(6),
+  stats: z.array(z.object({ value: slotBindingSchema, label: z.string().min(1).max(100) })).max(6),
 });
+
+function fieldNamesIn(binding: z.infer<typeof slotBindingSchema> | null): string[] {
+  return binding?.mode === "field" ? [binding.fieldName] : [];
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions);
@@ -22,10 +31,10 @@ export async function POST(req: Request) {
   }
 
   const fieldNames = [
-    parsed.data.titleField,
-    parsed.data.subtitleField,
+    ...fieldNamesIn(parsed.data.title),
+    ...fieldNamesIn(parsed.data.subtitle),
     parsed.data.imageField,
-    ...parsed.data.stats.map((s) => s.fieldName),
+    ...parsed.data.stats.flatMap((s) => fieldNamesIn(s.value)),
   ].filter((n): n is string => n !== null);
 
   if (fieldNames.length > 0) {

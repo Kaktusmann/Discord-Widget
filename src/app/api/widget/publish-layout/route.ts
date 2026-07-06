@@ -24,7 +24,8 @@ export async function POST() {
   }
 
   const mapping = user.widgetLayoutJson ? JSON.parse(user.widgetLayoutJson) : defaultLayoutMapping(fieldMap);
-  const surfaces = buildWidgetConfigSurfaces(mapping, fieldMap);
+  const displayName = "My Widget";
+  const surfaces = buildWidgetConfigSurfaces(mapping, fieldMap, displayName);
   const botToken = decrypt(user.discordBotTokenEnc);
 
   try {
@@ -32,7 +33,7 @@ export async function POST() {
       user.discordAppId,
       botToken,
       user.discordWidgetConfigId,
-      "My Widget",
+      displayName,
       surfaces,
     );
     await prisma.user.update({
