@@ -187,6 +187,13 @@ function TestFetchAndMap({ source, fieldOptions }: { source: SourceEntry; fieldO
       {fieldOptions.length > 0 && (
         <details className="mt-2">
           <summary className="cursor-pointer text-xs text-zinc-500">Map a field manually</summary>
+          <p className="mt-2 text-xs text-zinc-500">
+            A plain path (e.g. <code>data.stats.wins</code>) passes the value through as-is. Wrap
+            it in <code>{"{{ }}"}</code> to combine it with literal text, e.g.{" "}
+            <code>{"{{days_watched}} days"}</code> → &quot;83.5 days&quot;. If the API just returns
+            a bare value like <code>{"{ \"value\": 42 }"}</code>, use <code>{"{{value}}"}</code>{" "}
+            the same way, e.g. <code>{"{{value}} wins"}</code>.
+          </p>
           <div className="mt-2 flex flex-wrap items-center gap-2">
             <select
               value={fieldName}
@@ -268,9 +275,10 @@ export function SourcesPanel({
     <section className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="font-medium">JSON URL sources</h2>
       <p className="text-sm text-zinc-500">
-        Point a field at your own API URL. After <strong>Test fetch</strong>, fields whose JSON key
-        matches a field name (or its admin-set default path) are auto-detected — just click{" "}
-        <strong>Map all</strong>. For anything else, use the manual path/template box.
+        Enter your Anilist username below to pull your stats automatically. After <strong>Test fetch</strong>, fields whose JSON key matches a field
+        name (or its admin-set default path) are auto-detected, so one click on{" "}
+        <strong>Map all</strong> maps everything at once. Need a different source entirely (not
+        Anilist)? Use <strong>Advanced</strong> to enter a raw URL instead.
       </p>
 
       {defaultSourceUrlTemplate && !advanced ? (
@@ -279,7 +287,7 @@ export function SourcesPanel({
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
+              placeholder="Anilist Username"
               className="flex-1 rounded border border-zinc-300 bg-transparent px-2 py-1.5 text-sm dark:border-zinc-700"
             />
             <button

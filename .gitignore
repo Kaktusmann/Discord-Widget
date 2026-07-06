@@ -51,6 +51,8 @@ Thumbs.db
 .idea/
 .claude/
 .VSCodeCounter/
+CLAUDE.md
+AGENTS.md
 
 # vercel
 .vercel
